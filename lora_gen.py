@@ -56,7 +56,7 @@ class EMBGPT2LoRAGen(nn.Module):
         #x = self.gpt2(x)
         for layer_index in range(len(self.gpt2.transformer.h)):
             x = self.gpt2.transformer.h[layer_index](x)[0] # TODO: fix leaving out (ln_f)
-        x = self.gpt2.transformer.ln_f(x)
+        x = self.gpt2.transformer.ln_f(x) # fixed
         # vs self.gpt2.lm_head(x)
         x = self.o2l(x)
         
@@ -72,14 +72,12 @@ class EMBGPT2LoRAGen(nn.Module):
         return [A, B]
     
     def make_input(self, layer_index, weight_type, data_emb=None):
+        # TODO: move to forward()?
         x = self.emb(layer_index * weight_type)
         if data_emb is not None:
             x = torch.cat((x, data_emb))
         x = x.reshape((1, 1, 768))
         return x
-        
-        
-
 # EMB-Hypernetwork-LoRAGenerator <- EHLG
 EHLG_GPT2 = EMBGPT2LoRAGen
 EHLG = EHLG_GPT2
@@ -109,7 +107,7 @@ def lora_gen_test():
     return eg_model
 
 def lora_gen_test_p2(eg_model):
-    x = eg_model.make_input(torch.tensor(1), torch.tensor(1))
+    x = eg_model.make_input(torch.tensor(1), torch.tensor(1)) # maybe move everything to forward()?
     output = eg_model(x)
     return output
 
