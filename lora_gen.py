@@ -39,6 +39,7 @@ class EMBGPT2LoRAGen(nn.Module):
     
     def make_input(self, layer_index, weight_type, data_emb=None):
         # TODO: move to forward()?
+        # rewrite for batched processing?
         x = self.emb(layer_index * weight_type)
         if data_emb is not None:
             x = torch.cat((x, data_emb))
