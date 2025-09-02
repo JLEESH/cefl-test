@@ -3,47 +3,9 @@ import torch.nn as nn
 
 class EMBGPT2LoRAGen(nn.Module):
     def __init__(self, config):
-        """
-        EMBGPT2LoRAGen(config)
-        
-        ```
-        config={
-            gpt2,
-            gpt2_tokenizer, # (note aliases)
-            emb_types, # (no. of layer_index * weight_type combinations)
-            emb_output_dim, # (=gpt2.transformer.h[0] input dim.)
-            lora_gen_in_dim, # (=gpt2.transformer.h[11] output dim.)
-            lora_gen_out_dim, # (=A_size + B_size)
-            lora_rank,
-            lora_in_dim,
-            lora_out_dim
-        }
-        ```
-        
-        A_size = lora_rank * lora_in_dim
-        B_size = lora_rank * lora_out_dim
-        
-        ``forward(x)``:
-            usage:
-            ```
-            # set LLM.weights to be the parameters to be fine-tuned
-            ...
-            for layer_index in range(nLayers):
-                for weight_type in range(nWeightTypes):
-                    x = make_input(layer_index, weight_type, data=None)
-                    A, B = EHLG_GPT2.forward(x)
-                    LLM.weights['{layer_index}']['{weight_type}'] += A @ B
-            ```
-        
-        ``make_input(layer_index, weight_type, data)``:
-            ``layer_index``
-            ``weight_type`` (e.g. k or v)
-            ``data`` (defaults to ``None``)
-        
-        The output is then added to the appropriate LLM matrix before the forward pass with the data.
-        """
         super().__init__()
-        self.emb = nn.Embedding(config.emb_types, config.emb_output_dim) # unique embed for each layer and type combin.
+        self.emb = nn.Embedding(config.emb_types, config.emb_output_dim)
+        # unique embed for each layer and type combination
         self.gpt2 = config.gpt2 # fine-tuned or pretrained gpt2
         self.gpt2_tokenizer = config.gpt2_tokenizer
         self.tokenizer = self.gpt2_tokenizer
@@ -64,7 +26,8 @@ class EMBGPT2LoRAGen(nn.Module):
         x = self.o2l(x)
         
         # reshape to lora dimensions
-        A_size = self.lora_rank * self.lora_in_dim # B_size = self.lora_rank * self.lora_out_dim
+        A_size = self.lora_rank * self.lora_in_dim
+        # B_size = self.lora_rank * self.lora_out_dim
         
         # reshape and return output
         x = x.reshape(-1)
