@@ -9,12 +9,15 @@ from types import SimpleNamespace
 
 class EHLGOLM(nn.Module):
     def __init__(self, config):
+        super().__init__()
         self.olm = config.olm
         self.ehlg = config.ehlg
         # self.olm.tokenizer
         # self.ehlg.tokenizer
         self.scale_ehlg = config.scale_ehlg
         self.scale_olm = config.scale_olm
+        self.nlayers_olm = config.nlayers_olm
+        self.ntypes = config.ntypes
     
     def forward(self, prompt, layer_indices=None, weight_types=None):
         # by default, the input to Gollem should be:
@@ -47,8 +50,9 @@ class EHLGOLM(nn.Module):
         
         # pass prompt to OLM
         enc_olm = self.olm.tokenizer(prompt, return_tensors="pt")
-        out_olm = self.olm.generate(input_ids=enc_olm.input_ids, max_new_tokens=128)
-        dec_olm = self.olm.tokenizer.decoder(out_olm[0])
+        #out_olm = self.olm.model.generate(input_ids=enc_olm.input_ids, max_new_tokens=128)
+        out_olm = self.olm.model.generate(input_ids=enc_olm.input_ids, max_new_tokens=12)
+        dec_olm = self.olm.tokenizer.decode(out_olm[0])
         
         # return decoded text with the raw output
         return [dec_olm, out_olm]
@@ -60,7 +64,9 @@ class EHLGOLM(nn.Module):
         'ehlg'          :   EHLG(EHLG.default_config),
         'olm'           :   OLM(OLM.default_config),
         'scale_ehlg'    :   1.0,
-        'scale_olm'     :   1.0
+        'scale_olm'     :   1.0,
+        'nlayers_olm'   :   26,
+        'ntypes'        :   2
     }
     default_config = SimpleNamespace(default_config_dict)
 # Aliases (perhaps to decide on just a few):
@@ -75,7 +81,9 @@ EHL = EHLGOLM
 def gollem_test():
     gollem_model = Gollem(Gollem.default_config)
     gollem = gollem_model
-    [dec, raw] = gollem("This is a test sentence for Gollem.")
+    #[dec, raw] = gollem("This is a test sentence for Gollem.")
+    [dec, raw] = gollem("Make up a new word and explain what it means. The word and its meaning are: ")
+    print(dec)
     return [dec, raw]
 
 def main():
@@ -115,9 +123,6 @@ def test_gollem_forward_pass():
 def test_gollem_train():
     # Gollem training pipeline
     pass
-
-def old_main():
-    llm_apply_lora()
 
 
 if __name__ == "__main__":

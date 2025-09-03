@@ -26,7 +26,7 @@ class OpenLLaMAv2Model(nn.Module):
 # (can also be understood to mean Open Language Model, Original Language Model, etc.)
 OLM = OpenLLaMAv2Model
 
-def llm_input_test(args_list=None):
+def llm_input_test(args_list=None, prompt=None):
     import argparse
     from types import SimpleNamespace
     
@@ -37,7 +37,8 @@ def llm_input_test(args_list=None):
     model_path = args.model_path
     
     if model_path is None:
-        raise ValueError(f"``model_path`` is None. Please pass a directory.")
+        model_path = DEFAULT_OLM_PATH
+        #raise ValueError(f"``model_path`` is None. Please pass a directory.")
     
     # configure & create OLM model
     config = SimpleNamespace()
@@ -46,7 +47,8 @@ def llm_input_test(args_list=None):
     llm_model = OpenLLaMAv2Model(config)
     
     # test prompts
-    prompt = 'Q: What is the largest animal?\nA:'
+    if prompt is None:
+        prompt = 'Q: What is the largest animal?\nA:'
     input_ids = llm_model.tokenizer(prompt, return_tensors="pt").input_ids
     
     generation_output = llm_model.model.generate(
@@ -60,4 +62,6 @@ def llm_input_test(args_list=None):
 
 if __name__ == '__main__':
     print(llm_input_test())
+    print()
+    print(llm_input_test(prompt="Make up a new word and explain what it means. The word and its meaning are: "))
     

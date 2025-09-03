@@ -113,7 +113,7 @@ class EMBGPT2LoRAGen(nn.Module):
         
         'gpt2'              :   AutoModelForCausalLM.from_pretrained('gpt2'),
         'gpt2_tokenizer'    :   AutoTokenizer.from_pretrained('gpt2'),
-        'nlayers'           :   12,
+        'nlayers'           :   26,#12,
         'ntypes'            :   2,
         'emb_output_dim'    :   DEFAULT_EMB_DIM,
         'lora_gen_in_dim'   :   DEFAULT_EMB_DIM, # (=gpt2 output dim.)
