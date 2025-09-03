@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
-from lora_gen import EHLG
+#from lora_gen import EHLG
+from ehlg import EHLG
 from llm import OLM
 
 class EHLGOLM(nn.Module): #

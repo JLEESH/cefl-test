@@ -15,14 +15,14 @@ class OpenLLaMAv2Model(nn.Module):
         return self.model(x)
 OLM = OpenLLaMAv2Model # Open Language Model, Original Language Model, etc.
 
-def llm_input_test():
+def llm_input_test(args_list=None):
     import argparse
     from types import SimpleNamespace
     
     parser = argparse.ArgumentParser()
     parser.add_argument('--model-path', '-p', default=None)
     parser.add_argument('--mode', '-m', default=None)
-    args = parser.parse_args()
+    args = parser.parse_args(args_list)
     model_path = args.model_path
     
     if model_path is None:
@@ -49,4 +49,4 @@ def llm_input_test():
 
 if __name__ == '__main__':
     print(llm_input_test())
-    input() # python unloads/gc's the model eventually
+    
