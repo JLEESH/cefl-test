@@ -45,23 +45,24 @@ class EMBGPT2LoRAGen(nn.Module):
         ab_dict = {}
         counter = 0
         for i, layer_index in enumerate(layer_indices):
+            ab_dict[layer_index] = {}
             for wt in weight_types[i]:
                 x_i_t = x[:,counter,:]
                         
                 # reshape to lora dimensions
                 A_size = self.lora_rank * self.lora_in_dim
                 # B_size = self.lora_rank * self.lora_out_dim
-                A = x_i_t[:A_size].reshape(self.lora_in_dim, self.lora_rank)
-                B = x_i_t[A_size:].reshape(self.lora_rank, self.lora_out_dim)
+                A = x_i_t[:,:A_size].reshape(self.lora_in_dim, self.lora_rank)
+                B = x_i_t[:,A_size:].reshape(self.lora_rank, self.lora_out_dim)
                 
-                ab_dict[layer_index][wt] = [A, B]
+                ab_dict[layer_index][wt] = {'A': A, 'B': B}
                 counter += 1
         
         return ab_dict
     
     def make_input(self, layer_index, weight_type, data_emb=None):
         # TODO: move to forward()?
-        # rewrite for batched processing?
+        # rewrite for batched processing? cf. make_input_batched()
         #x = self.emb(layer_index * weight_type)
         x = self.emb(layer_index * self.ntypes + weight_type)
         if data_emb is not None:
@@ -73,14 +74,21 @@ class EMBGPT2LoRAGen(nn.Module):
     
     
     def make_input_batch(self, layer_indices, weight_types, data_emb=None):
-        # TODO: move to forward()?
-        # rewrite for batched processing?
-        x = torch.tensor([])
-        for i, layer_index in enumerate(layer_indices):
-            for wt in weight_types[i]:
-                x_l_t = self.embed(layer_index * self.ntypes + wt)
-                x = torch.cat((x, x_l_t), dim=1)
-        #x = self.emb([])
+        
+        # x = torch.tensor([[]])
+        # for i, layer_index in enumerate(layer_indices):
+        #     for wt in weight_types[i]:
+        #         #x_l_t = self.emb(torch.tensor(layer_index * self.ntypes + wt))
+        #         #x_l_t = x_l_t.reshape(1, x_l_t.shape[-1])
+        #         #x = torch.cat((x, x_l_t), dim=0)
+        # #x = self.emb([])
+        if len(layer_indices) != len(weight_types):
+            raise ValueError("``make_input_batch()``: length of ``layer_indices`` and ``weight_types`` do not match.")
+        
+        #indices_list = [li * self.ntypes + wt for li in layer_indices for wt in weight_types[li]]
+        indices_list = [li * self.ntypes + wt for i, li in enumerate(layer_indices) for wt in weight_types[i]]
+        x = self.emb(torch.tensor(indices_list))
+        
         if data_emb is not None:
             x = torch.cat((x, data_emb))
         x = x.reshape((1, x.shape[-2], x.shape[-1]))
@@ -123,20 +131,21 @@ def lora_gen_test():
     ehlg_model = EHLG(config)
     return ehlg_model
 
-def lora_gen_test_p2(ehlg_model):
+def lora_gen_test_p2(ehlg_model, layer_indices, weight_types):
     #eg_model = ehlg_model
     #layer_index = 1
     #weight_type = 1
     #x = eg_model.make_input(torch.tensor(layer_index), torch.tensor(weight_type)) # TODO: maybe move everything to forward()?
     #output = eg_model(x)
     
-    layer_indices = [0, 1, 2, 4, 8]
-    weight_types = [[0, 1], [0, 1], [0], [1]]
-    x = ehlg_model.make_input_batch(layer_indices, weight_types)
-    output_ab_dict = ehlg_model(x)
+    ehlg = ehlg_model
+    x = ehlg.make_input_batch(layer_indices, weight_types)
+    output = ehlg(x)
+    output_ab_dict = ehlg.reshape_output(output, layer_indices, weight_types)
     return output_ab_dict
 
 if __name__ == '__main__':
+    # TODO: Instantiation of EHLG using default settings as described in tests
     
     # debug
     print("running some basic tests...")
@@ -150,10 +159,9 @@ if __name__ == '__main__':
     # #print(f"output: {output}")
     # print("A:%s\n B:%s" % (output[0].shape, output[1].shape))
     
-    print("testing forward pass with li=1 and wt=1...")
-    output_ab_dict = lora_gen_test_p2(eg_model)
+    layer_indices = [0, 1, 2, 4, 8]
+    weight_types = [[0, 1], [0, 1], [0], [1], [0, 1]]
+    print(f"testing forward pass with li={layer_indices} and wt={weight_types}...")
+    output_ab_dict = lora_gen_test_p2(eg_model, layer_indices, weight_types)
     print("output from eg_model...")
     print(f"output: {output_ab_dict}")
-    #print("A:%s\n B:%s" % (output[0].shape, output[1].shape))
-    
-    pass
