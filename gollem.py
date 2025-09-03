@@ -1,7 +1,11 @@
 import torch
 import torch.nn as nn
 from ehlg import EHLG
-from llm import OLM
+from olm import OLM
+from types import SimpleNamespace
+
+# EHL-FT-FL : Fine-tuning Models through Federated Learning of Hypernetwork Embeddings
+# CEFL: Communication-Efficient Federated learning
 
 class EHLGOLM(nn.Module):
     def __init__(self, config):
@@ -49,13 +53,19 @@ class EHLGOLM(nn.Module):
         # return decoded text with the raw output
         return [dec_olm, out_olm]
     
-    def adapt_old(self, lora_dict):
+    def adapt_olm(self, lora_dict):
         return self.olm
+    
+    default_config_dict = {
+        'ehlg'          :   EHLG(EHLG.default_config),
+        'olm'           :   OLM(OLM.default_config),
+        'scale_ehlg'    :   1.0,
+        'scale_olm'     :   1.0
+    }
+    default_config = SimpleNamespace(default_config_dict)
 # Aliases (perhaps to decide on just a few):
-# Naming Rationale:
-# Embedding, Hypernetwork, LLMs
-# EHL-FT-FL : Fine-tuning Models through Federated Learning of Hypernetwork Embeddings
-# CEFL: Communication-Efficient Federated learning
+# Naming Rationale: Embedding, Hypernetwork, LLM
+# EHLGOLM <- EHLG + OLM
 Gollem = EHLGOLM
 GOHLLEM = EHLGOLM
 Golem = GOHLLEM
@@ -63,16 +73,13 @@ GOLLEM = Gollem
 EHL = EHLGOLM
 
 def gollem_test():
-    pass
+    gollem_model = Gollem(Gollem.default_config)
+    gollem = gollem_model
+    [dec, raw] = gollem("This is a test sentence for Gollem.")
+    return [dec, raw]
 
 def main():
     gollem_test()
-
-def llm_apply_lora():
-    # obtain output from LoRA-adapted OLM
-    ...
-    
-    return None
 
 def test_gollem_forward_pass():
     # load EHLG and OLM
@@ -105,24 +112,12 @@ def test_gollem_forward_pass():
     gollem_output = gollem(1, 1)
     return gollem_output
 
-# def llm_ehlg_train():
-#     # train the pipeline/embeddings
-#     return
 def test_gollem_train():
     # Gollem training pipeline
     pass
 
 def old_main():
     llm_apply_lora()
-    # llm_apply_lora() to eventually be identical to instantiating Gollem
-    # i.e.
-    # '''
-    # ...
-    # model = Gollem(config)
-    # output = model(x)
-    # print(model.decode(output))
-    # '''
-    # test_gollem_train() # llm_ehlg_train()
 
 
 if __name__ == "__main__":

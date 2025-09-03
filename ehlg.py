@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 from transformers import AutoTokenizer, AutoModelForCausalLM
-from datasets import load_dataset
 from types import SimpleNamespace
 
 class EMBGPT2LoRAGen(nn.Module):
@@ -124,6 +123,7 @@ class EMBGPT2LoRAGen(nn.Module):
         'lora_out_dim'      :   DEFAULT_LORA_DIM
     }
     default_config = SimpleNamespace(default_config_dict)
+# Aliases:
 # EMB-Hypernetwork-LoRAGenerator <- EHLG
 EHLG_GPT2 = EMBGPT2LoRAGen
 EHLG = EHLG_GPT2

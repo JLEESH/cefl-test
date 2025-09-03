@@ -1,6 +1,9 @@
 import torch
 import torch.nn as nn
 from transformers import LlamaTokenizer, LlamaForCausalLM
+from types import SimpleNamespace
+
+DEFAULT_OLM_PATH="../models/open_llama_3b_v2"
 
 class OpenLLaMAv2Model(nn.Module):
     def __init__(self, config):
@@ -13,7 +16,15 @@ class OpenLLaMAv2Model(nn.Module):
     
     def forward(self, x):
         return self.model(x)
-OLM = OpenLLaMAv2Model # Can also tbe understood to mean Open Language Model, Original Language Model, etc.
+    
+    default_config_dict = {
+        'model'     :   LlamaForCausalLM.from_pretrained(DEFAULT_OLM_PATH),
+        'tokenizer' :   LlamaTokenizer.from_pretrained(DEFAULT_OLM_PATH),
+    }
+    default_config = SimpleNamespace(default_config_dict)
+# Alias:
+# (can also be understood to mean Open Language Model, Original Language Model, etc.)
+OLM = OpenLLaMAv2Model
 
 def llm_input_test(args_list=None):
     import argparse
