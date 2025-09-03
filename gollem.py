@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from ehlg import EHLG
 from olm import OLM
+from lora import LinearLoRA
 from types import SimpleNamespace
 
 # EHL-FT-FL : Fine-tuning Models through Federated Learning of Hypernetwork Embeddings
@@ -11,6 +12,7 @@ class EHLGOLM(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.olm = config.olm
+        self.olm.freeze()
         self.ehlg = config.ehlg
         # self.olm.tokenizer
         # self.ehlg.tokenizer
@@ -58,6 +60,23 @@ class EHLGOLM(nn.Module):
         return [dec_olm, out_olm]
     
     def adapt_olm(self, lora_dict):
+        for li, wt in lora_dict.items():
+            for wt_i in wt:
+                if wt_i == 0:
+                    #self.olm.model.model.layers[li].self_attn.v_proj.weight += lora_dict[li][wt_i]['A'] @ lora_dict[li][wt_i]['B']
+                    org = self.olm.model.model.layers[li].self_attn.k_proj
+                    w = torch.nn.Parameter(lora_dict[li][wt_i]['A'] @ lora_dict[li][wt_i]['B'])
+                    self.olm.model.model.layers[li].self_attn.k_proj = LinearLoRA(org, w)
+                    #self.olm.model.model.layers[li].self_attn.k_proj.weight = torch.nn.Parameter(torch.zeros((3200, 3200)))
+                elif wt_i == 1:
+                    #self.olm.model.model.layers[li].self_attn.v_proj.weight += lora_dict[li][wt_i]['A'] @ lora_dict[li][wt_i]['B']
+                    org = self.olm.model.model.layers[li].self_attn.v_proj
+                    w = torch.nn.Parameter(lora_dict[li][wt_i]['A'] @ lora_dict[li][wt_i]['B'])
+                    self.olm.model.model.layers[li].self_attn.v_proj = LinearLoRA(org, w)
+                    #self.olm.model.model.layers[li].self_attn.v_proj.weight = torch.nn.Parameter(torch.zeros((3200, 3200)))
+                    # other adjustments tried: amplifying w (x1000); setting ``torch.manual_seed(42)``; removing the adaptation process
+                else:
+                    raise NotImplementedError
         return self.olm
     
     default_config_dict = {
@@ -87,43 +106,12 @@ def gollem_test():
     return [dec, raw]
 
 def main():
+    torch.manual_seed(42)
     gollem_test()
 
-def test_gollem_forward_pass():
-    # load EHLG and OLM
-    # instantiate Gollem
-    # pass data through Gollem instance
-    from types import SimpleNamespace
-    
-    layer_index = 1
-    weight_type = 1
-    
-    # load EHLG
-    ehlg_config = None
-    ehlg = EHLG(ehlg_config)
-    
-    # obtain EHLG output LoRA matrices
-    x = ehlg.make_input(torch.tensor(layer_index), torch.tensor(weight_type))
-    ehlg_output = ehlg(x)
-    
-    # load OLM and add LoRA matrices to OLM
-    olm_config = None
-    olm = OLM(olm_config)
-    
-    gollem_config = SimpleNamespace()
-    gollem_config.ehlg = ehlg
-    gollem_config.olm = olm
-    gollem_config.scale_ehlg = 1
-    gollem_config.scale_olm = 1
-    gollem = Gollem(gollem_config)
-    
-    gollem_output = gollem(1, 1)
-    return gollem_output
-
-def test_gollem_train():
+def gollem_training_test():
     # Gollem training pipeline
     pass
-
 
 if __name__ == "__main__":
     main()

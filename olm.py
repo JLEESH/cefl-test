@@ -16,6 +16,10 @@ class OpenLLaMAv2Model(nn.Module):
     
     def forward(self, x):
         return self.model(x)
+
+    def freeze(self):
+        for param in self.model.parameters():
+            param.requires_grad = False
     
     default_config_dict = {
         'model'     :   LlamaForCausalLM.from_pretrained(DEFAULT_OLM_PATH),
