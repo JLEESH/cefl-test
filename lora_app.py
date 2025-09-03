@@ -39,6 +39,15 @@ EHL = EHLGOLM # Embedding, Hypernetwork, LLMs
 # CEFL: Communication-Efficient Federated learning
 
 def llm_apply_lora():
+    # obtain output from LoRA-adapted OLM
+    ...
+    
+    return None
+
+def test_gollem_forward_pass():
+    # load EHLG and OLM
+    # instantiate Gollem
+    # pass data through Gollem instance
     from types import SimpleNamespace
     
     layer_index = 1
@@ -65,17 +74,6 @@ def llm_apply_lora():
     
     gollem_output = gollem(1, 1)
     return gollem_output
-    
-    # obtain output from LoRA-adapted OLM
-    ...
-    
-    return None
-
-def test_gollem_forward_pass():
-    # load EHLG and OLM
-    # instantiate Gollem
-    # pass data through Gollem instance
-    pass
 
 # def llm_ehlg_train():
 #     # train the pipeline/embeddings
