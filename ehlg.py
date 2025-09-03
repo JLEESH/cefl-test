@@ -49,7 +49,7 @@ class EMBGPT2LoRAGen(nn.Module):
         return ab_dict
     
     def _inner_forward(self, x):
-        # pass embeddings to hypernetwork and the subsequent output to the lora generator
+        # pass embeddings to the hypernetwork and the resulting output to the lora generator
         for layer_index in range(len(self.gpt2.transformer.h)):
             x = self.gpt2.transformer.h[layer_index](x)[0]
         x = self.gpt2.transformer.ln_f(x)
@@ -59,19 +59,23 @@ class EMBGPT2LoRAGen(nn.Module):
     forward_old=_inner_forward
     
     def reshape_output(self, x, layer_indices, weight_types):
+        # construct dictionary of A and B LoRA matrices by layer index and weight type
         ab_dict = {}
         counter = 0
         for i, layer_index in enumerate(layer_indices):
             ab_dict[layer_index] = {}
             for wt in weight_types[i]:
+                # extract relevant row
                 x_i_t = x[:,counter,:]
-                        
+                
                 # reshape to lora dimensions
                 A_size = self.lora_rank * self.lora_in_dim
                 # B_size = self.lora_rank * self.lora_out_dim
+                
                 A = x_i_t[:,:A_size].reshape(self.lora_in_dim, self.lora_rank)
                 B = x_i_t[:,A_size:].reshape(self.lora_rank, self.lora_out_dim)
                 
+                # add A and B matrices to dict
                 ab_dict[layer_index][wt] = {'A': A, 'B': B}
                 counter += 1
         
@@ -79,6 +83,7 @@ class EMBGPT2LoRAGen(nn.Module):
     
     def make_input(self, layer_index, weight_type, data_emb=None):
         x = self.emb(layer_index * self.ntypes + weight_type)
+        # TODO: test appending data_emb
         if data_emb is not None:
             x = torch.cat((x, data_emb))
         x = x.reshape((1, 1, x.shape[-1]))
@@ -90,11 +95,13 @@ class EMBGPT2LoRAGen(nn.Module):
                 "``make_input_batch()``: length of ``layer_indices`` and ``weight_types`` do not match."
             )
         
-        # extract relevant weights by index combination
-        indices_list = [li * self.ntypes + wt for i, li in enumerate(layer_indices) for wt in weight_types[i]]
+        # extract relevant weights by index combination (after flattening the combinations)
+        # cf. test input
+        indices_list = [li * self.ntypes + wt for index, li in enumerate(layer_indices) for wt in weight_types[index]]
         x = self.emb(torch.tensor(indices_list))
         
         # append data_emb if any
+        # TODO: test appending data_emb
         if data_emb is not None:
             x = torch.cat((x, data_emb))
         x = x.reshape((1, x.shape[-2], x.shape[-1]))
@@ -141,8 +148,8 @@ def ehlg_test():
     
     print("Model ``ehlg`` created.")
     
-    layer_indices = [0, 1, 2, 4, 8]
-    weight_types = [[0, 1], [0, 1], [0], [1], [0, 1]]
+    layer_indices   =   [0, 1, 2, 4, 8]
+    weight_types    =   [[0, 1], [0, 1], [0], [1], [0, 1]] # for each layer, decide which weight types to adapt
     
     print(f"Testing forward pass with ``li={layer_indices}`` and ``wt={weight_types}``...")
     

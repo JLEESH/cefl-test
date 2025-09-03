@@ -1,10 +1,9 @@
 import torch
 import torch.nn as nn
-#from lora_gen import EHLG
 from ehlg import EHLG
 from llm import OLM
 
-class EHLGOLM(nn.Module): #
+class EHLGOLM(nn.Module):
     def __init__(self, config):
         self.olm = config.olm
         self.ehlg = config.ehlg
@@ -13,31 +12,61 @@ class EHLGOLM(nn.Module): #
         self.scale_ehlg = config.scale_ehlg
         self.scale_olm = config.scale_olm
     
-    def forward(self, x):
+    def forward(self, prompt, layer_indices=None, weight_types=None):
         # by default, the input to Gollem should be:
         # 1. list of indices and types for HN (can have default values)
         # 2. input for llm (data)
         
-        ehlg_output = self.ehlg(x)
+        # train all indices by default
+        if layer_indices is None:
+            layer_indices = [n for n in range(self.nlayers_olm)]
+        if weight_types is None:
+            weight_types = [[i for i in range(self.ntypes)] for _ in range(len(layer_indices))]
+        if len(layer_indices) != len(weight_types):
+            raise ValueError(
+                "``EHLGOLM.forward()``: the lengths of ``layer_indices`` and ``weight_types`` do not match."
+            )
+        
+        ehlg_output_ab_dict = self.ehlg(layer_indices, weight_types, data_emb=None)
+        ehlg_output = ehlg_output_ab_dict
+        
         # add LoRA matrix outputs to OLM
+        self.adapt_olm(lora_dict=ehlg_output_ab_dict)
+        
         #self.adapt(olm=self.olm, ehlg=self.ehlg)
         #self._adapt_olm(ehlg_output)
         #self._adapt_olm(self.ehlg(x))
-        for k, v in ehlg_output.items():
-            self.olm[k] += v
+        # for k, v in ehlg_output.items():
+        #     self.olm[k] += v
+        #olm_output = self.olm(x)
+        #return olm_output
         
-        olm_output = self.olm(x)
-        return olm_output
+        # pass prompt to OLM
+        enc_olm = self.olm.tokenizer(prompt, return_tensors="pt")
+        out_olm = self.olm.generate(input_ids=enc_olm.input_ids, max_new_tokens=128)
+        dec_olm = self.olm.tokenizer.decoder(out_olm[0])
+        
+        # return decoded text with the raw output
+        return [dec_olm, out_olm]
     
-    # def adapt(self, olm, ehlg):
-    #     pass
-GOHLLEM = EHLGOLM
-Golem = GOHLLEM
-Gollem = EHLGOLM
-GOLLEM = Gollem
-EHL = EHLGOLM # Embedding, Hypernetwork, LLMs
+    def adapt_old(self, lora_dict):
+        return self.olm
+# Aliases (perhaps to decide on just a few):
+# Naming Rationale:
+# Embedding, Hypernetwork, LLMs
 # EHL-FT-FL : Fine-tuning Models through Federated Learning of Hypernetwork Embeddings
 # CEFL: Communication-Efficient Federated learning
+Gollem = EHLGOLM
+GOHLLEM = EHLGOLM
+Golem = GOHLLEM
+GOLLEM = Gollem
+EHL = EHLGOLM
+
+def gollem_test():
+    pass
+
+def main():
+    gollem_test()
 
 def llm_apply_lora():
     # obtain output from LoRA-adapted OLM
@@ -83,7 +112,7 @@ def test_gollem_train():
     # Gollem training pipeline
     pass
 
-if __name__ == "__main__":
+def old_main():
     llm_apply_lora()
     # llm_apply_lora() to eventually be identical to instantiating Gollem
     # i.e.
@@ -94,4 +123,7 @@ if __name__ == "__main__":
     # print(model.decode(output))
     # '''
     # test_gollem_train() # llm_ehlg_train()
-    
+
+
+if __name__ == "__main__":
+    main()

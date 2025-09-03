@@ -13,7 +13,7 @@ class OpenLLaMAv2Model(nn.Module):
     
     def forward(self, x):
         return self.model(x)
-OLM = OpenLLaMAv2Model # Open Language Model, Original Language Model, etc.
+OLM = OpenLLaMAv2Model # Can also tbe understood to mean Open Language Model, Original Language Model, etc.
 
 def llm_input_test(args_list=None):
     import argparse
