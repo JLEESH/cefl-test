@@ -105,6 +105,51 @@ class EMBGPT2LoRAGen(nn.Module):
             x = torch.cat((x, data_emb))
         x = x.reshape((1, x.shape[-2], x.shape[-1]))
         return x
+    
+    def _freeze_hypernetwork(self, requires_grad):
+        for param in self.model.model.parameters():
+            param.requires_grad = requires_grad
+    
+    def freeze_hypernetwork(self):
+        self._freeze_hypernetwork(requires_grad=False)
+    
+    def unfreeze_hypernetwork(self):
+        self._freeze_hypernetwork(requires_grad=True)
+    
+    def _freeze_o2l(self, requires_grad):
+        for param in self.o2l.parameters():
+            param.requires_grad = requires_grad
+    
+    def freeze_o2l(self):
+        self._freeze_o2l(requires_grad=False)
+    
+    def unfreeze_o2l(self):
+        self._freeze_o2l(requires_grad=True)
+    
+    def freeze_for_fl(self):
+        self.freeze_hypernetwork()
+        self.freeze_o2l()
+    
+    def freeze_for_cft(self, freeze_hypernetwork=False):
+        if freeze_hypernetwork:
+            self.freeze_hypernetwork()
+        else:
+            self.unfreeze_hypernetwork()
+        self.unfreeze_o2l()
+    
+    def count_params(self, trainable_only=False):
+        # excludes gpt2 vocab embed
+        n_p_emb = self.emb.parameters().numel()
+        
+        if trainable_only is True:
+            n_p_o2l = sum(p.numel() for p in self.o2l.parameters() if p.requires_grad is True)
+            n_p_model = sum(p.numel() for p in self.model.model.parameters() if p.requires_grad is True)
+        else:
+            n_p_o2l = sum(p.numel() for p in self.o2l.parameters())
+            n_p_model = sum(p.numel() for p in self.model.model.parameters())
+            
+        n_p_total = n_p_emb + n_p_o2l + n_p_model
+        return n_p_total
 
     DEFAULT_EMB_DIM = 768 # same as the (wte)/embedding dimensions of the hypernetwork in EHLG
     DEFAULT_LORA_DIM = 3200 # should be the same as OLM weight dimensions (ehlg.o2l could be reduced in size)

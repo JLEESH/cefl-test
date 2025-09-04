@@ -79,6 +79,32 @@ class EHLGOLM(nn.Module):
                     raise NotImplementedError
         return self.olm
     
+    def _freeze_all(self, requires_grad):
+        for param in self.model.parameters():
+            param.requires_grad = requires_grad
+    
+    def freeze_all(self):
+        self.ehlg.freeze_all()
+        self.olm.freeze_all()
+    
+    def unfreeze_all(self):
+        self.ehlg.unfreeze_all()
+        self.olm.unfreeze_all()
+    
+    def freeze_for_fl(self):
+        self.ehlg.freeze_for_fl()
+        self.olm.freeze_for_fl()
+        
+    def freeze_for_cft(self):
+        self.ehlg.freeze_for_cft()
+        self.olm.freeze_for_cft()
+    
+    def count_params(self, trainable_only=False):
+        n_p_ehlg = self.ehlg.count_params(trainable_only)
+        n_p_olm = self.olm.count_params(trainable_only)
+        n_p_total = n_p_ehlg + n_p_olm
+        return n_p_total
+    
     default_config_dict = {
         'ehlg'          :   EHLG(EHLG.default_config),
         'olm'           :   OLM(OLM.default_config),
@@ -92,10 +118,10 @@ class EHLGOLM(nn.Module):
 # Naming Rationale: Embedding, Hypernetwork, LLM
 # EHLGOLM <- EHLG + OLM
 Gollem = EHLGOLM
-GOHLLEM = EHLGOLM
-Golem = GOHLLEM
-GOLLEM = Gollem
-EHL = EHLGOLM
+#GOHLLEM = EHLGOLM
+#Golem = GOHLLEM
+#GOLLEM = Gollem
+#EHL = EHLGOLM
 
 def gollem_test():
     gollem_model = Gollem(Gollem.default_config)
@@ -104,6 +130,30 @@ def gollem_test():
     [dec, raw] = gollem("Make up a new word and explain what it means. The word and its meaning are: ")
     print(dec)
     return [dec, raw]
+
+def gollem_freezing_test(verbose=True):
+    # test various freezing configurations
+    gollem = Gollem(Gollem.default_config)
+    
+    gollem_params_count = {}
+    gpc = gollem_params_count
+    gpc['init'] = gollem.count_params()
+    
+    gollem.freeze_all()
+    gpc['f_a'] = gollem.count_params()
+    
+    gollem.unfreeze_all()
+    gpc['uf_a'] = gollem.count_params()
+    
+    gollem.freeze_for_fl()
+    gpc['f_fl'] = gollem.count_params()
+    
+    gollem.freeze_for_cft()
+    gpc['f_cft'] = gollem.count_params()
+    
+    if verbose:
+        print(gpc)
+    return gpc
 
 def main():
     torch.manual_seed(42)

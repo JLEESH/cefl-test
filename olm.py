@@ -17,9 +17,26 @@ class OpenLLaMAv2Model(nn.Module):
     def forward(self, x):
         return self.model(x)
 
-    def freeze(self):
+    def _freeze_all(self, requires_grad):
         for param in self.model.parameters():
-            param.requires_grad = False
+            param.requires_grad = requires_grad
+    
+    def freeze_all(self):
+        self._freeze_all(requires_grad=False)
+    
+    def unfreeze_all(self):
+        self._freeze_all(requires_grad=True)
+
+    def freeze_for_fl(self):
+        self.freeze_all()
+    
+    def freeze_for_cft(self):
+        self.unfreeze_all()
+    
+    def count_params(self, trainable_only=False):
+        if trainable_only is True:
+            return sum(p.numel() for p in self.model.parameters() if p.requires_grad is True)
+        return sum(p.numel() for p in self.model.parameters())
     
     default_config_dict = {
         'model'     :   LlamaForCausalLM.from_pretrained(DEFAULT_OLM_PATH),
