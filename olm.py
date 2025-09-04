@@ -3,7 +3,9 @@ import torch.nn as nn
 from transformers import LlamaTokenizer, LlamaForCausalLM
 from types import SimpleNamespace
 
-DEFAULT_OLM_PATH="../models/open_llama_3b_v2"
+DEFAULT_OLM_MODEL_PATH = "../models/open_llama_3b_v2"
+DEFAULT_OLM_TOKENIZER_PATH = DEFAULT_OLM_MODEL_PATH
+DEFAULT_OLM_PATH = DEFAULT_OLM_MODEL_PATH
 
 class OpenLLaMAv2Model(nn.Module):
     def __init__(self, config):
@@ -33,7 +35,10 @@ class OpenLLaMAv2Model(nn.Module):
     def freeze_for_cft(self):
         self.unfreeze_all()
     
-    def count_params(self, trainable_only=False):
+    def freeze_for_pe_cft(self):
+        self.freeze_all()
+    
+    def count_params(self, trainable_only=True):
         if trainable_only is True:
             return sum(p.numel() for p in self.model.parameters() if p.requires_grad is True)
         return sum(p.numel() for p in self.model.parameters())

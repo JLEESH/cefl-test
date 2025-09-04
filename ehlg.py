@@ -3,6 +3,9 @@ import torch.nn as nn
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from types import SimpleNamespace
 
+DEFAULT_GPT2_MODEL_PATH = "../models/gpt2"
+DEFAULT_GPT2_TOKENIZER_PATH = "../tokenizers/gpt2"
+
 class EMBGPT2LoRAGen(nn.Module):
     def __init__(self, config):
         super().__init__()
@@ -107,7 +110,7 @@ class EMBGPT2LoRAGen(nn.Module):
         return x
     
     def _freeze_hypernetwork(self, requires_grad):
-        for param in self.model.model.parameters():
+        for param in self.model.parameters():
             param.requires_grad = requires_grad
     
     def freeze_hypernetwork(self):
@@ -115,6 +118,20 @@ class EMBGPT2LoRAGen(nn.Module):
     
     def unfreeze_hypernetwork(self):
         self._freeze_hypernetwork(requires_grad=True)
+    
+    def _freeze_all(self, requires_grad):
+        for param in self.emb.parameters():
+            param.requires_grad = requires_grad
+        for param in self.o2l.parameters():
+            param.requires_grad = requires_grad
+        for param in self.model.parameters():
+            param.requires_grad = requires_grad
+    
+    def freeze_all(self):
+        self._freeze_all(requires_grad=False)
+    
+    def unfreeze_all(self):
+        self._freeze_all(requires_grad=True)
     
     def _freeze_o2l(self, requires_grad):
         for param in self.o2l.parameters():
@@ -137,27 +154,39 @@ class EMBGPT2LoRAGen(nn.Module):
             self.unfreeze_hypernetwork()
         self.unfreeze_o2l()
     
-    def count_params(self, trainable_only=False):
+    def freeze_for_pe_cft(self, freeze_hypernetwork=True):
+        if freeze_hypernetwork:
+            self.freeze_hypernetwork()
+        else:
+            self.unfreeze_hypernetwork()
+        self.unfreeze_o2l()
+    
+    def count_params(self, trainable_only=True):
         # excludes gpt2 vocab embed
-        n_p_emb = self.emb.parameters().numel()
+        n_p_dict = {}
         
         if trainable_only is True:
+            n_p_emb = sum(p.numel() for p in self.emb.parameters() if p.requires_grad is True)
             n_p_o2l = sum(p.numel() for p in self.o2l.parameters() if p.requires_grad is True)
-            n_p_model = sum(p.numel() for p in self.model.model.parameters() if p.requires_grad is True)
+            n_p_model = sum(p.numel() for p in self.model.parameters() if p.requires_grad is True)
         else:
+            n_p_emb = sum(p.numel() for p in self.emb.parameters())
             n_p_o2l = sum(p.numel() for p in self.o2l.parameters())
-            n_p_model = sum(p.numel() for p in self.model.model.parameters())
+            n_p_model = sum(p.numel() for p in self.model.parameters())
             
         n_p_total = n_p_emb + n_p_o2l + n_p_model
-        return n_p_total
+        n_p_dict['emb'] = n_p_emb
+        n_p_dict['o2l'] = n_p_o2l
+        n_p_dict['model'] = n_p_model
+        return n_p_total, n_p_dict
 
     DEFAULT_EMB_DIM = 768 # same as the (wte)/embedding dimensions of the hypernetwork in EHLG
     DEFAULT_LORA_DIM = 3200 # should be the same as OLM weight dimensions (ehlg.o2l could be reduced in size)
     DEFAULT_LORA_RANK = 8
     default_config_dict = {
         
-        'gpt2'              :   AutoModelForCausalLM.from_pretrained('gpt2'),
-        'gpt2_tokenizer'    :   AutoTokenizer.from_pretrained('gpt2'),
+        'gpt2'              :   AutoModelForCausalLM.from_pretrained(DEFAULT_GPT2_MODEL_PATH),
+        'gpt2_tokenizer'    :   AutoTokenizer.from_pretrained(DEFAULT_GPT2_TOKENIZER_PATH),
         'nlayers'           :   26,#12,
         'ntypes'            :   2,
         'emb_output_dim'    :   DEFAULT_EMB_DIM,

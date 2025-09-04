@@ -12,15 +12,16 @@ class EHLGOLM(nn.Module):
     def __init__(self, config):
         super().__init__()
         self.olm = config.olm
-        self.olm.freeze()
+        #self.olm.freeze_for_fl()
         self.ehlg = config.ehlg
+        #self.ehlg.freeze_for_fl()
         # self.olm.tokenizer
         # self.ehlg.tokenizer
         self.scale_ehlg = config.scale_ehlg
         self.scale_olm = config.scale_olm
         self.nlayers_olm = config.nlayers_olm
         self.ntypes = config.ntypes
-    
+
     def forward(self, prompt, layer_indices=None, weight_types=None):
         # by default, the input to Gollem should be:
         # 1. list of indices and types for HN (can have default values)
@@ -58,7 +59,7 @@ class EHLGOLM(nn.Module):
         
         # return decoded text with the raw output
         return [dec_olm, out_olm]
-    
+
     def adapt_olm(self, lora_dict):
         for li, wt in lora_dict.items():
             for wt_i in wt:
@@ -78,32 +79,41 @@ class EHLGOLM(nn.Module):
                 else:
                     raise NotImplementedError
         return self.olm
-    
+
     def _freeze_all(self, requires_grad):
         for param in self.model.parameters():
             param.requires_grad = requires_grad
-    
+
     def freeze_all(self):
         self.ehlg.freeze_all()
         self.olm.freeze_all()
-    
+
     def unfreeze_all(self):
         self.ehlg.unfreeze_all()
         self.olm.unfreeze_all()
-    
+
     def freeze_for_fl(self):
         self.ehlg.freeze_for_fl()
         self.olm.freeze_for_fl()
-        
+
     def freeze_for_cft(self):
         self.ehlg.freeze_for_cft()
         self.olm.freeze_for_cft()
+        
+    def freeze_for_pe_cft(self):
+        self.ehlg.freeze_for_pe_cft()
+        self.olm.freeze_for_pe_cft()
     
-    def count_params(self, trainable_only=False):
-        n_p_ehlg = self.ehlg.count_params(trainable_only)
+    def count_params(self, trainable_only=True):
+        n_p_dict = {}
+        n_p_ehlg_dict = self.ehlg.count_params(trainable_only)
         n_p_olm = self.olm.count_params(trainable_only)
-        n_p_total = n_p_ehlg + n_p_olm
-        return n_p_total
+        n_p_total = n_p_ehlg_dict[0] + n_p_olm
+        
+        n_p_dict['ehlg'] = n_p_ehlg_dict
+        n_p_dict['olm'] = n_p_olm
+        n_p_dict['total'] = n_p_total
+        return n_p_total, n_p_dict
     
     default_config_dict = {
         'ehlg'          :   EHLG(EHLG.default_config),
@@ -151,17 +161,47 @@ def gollem_freezing_test(verbose=True):
     gollem.freeze_for_cft()
     gpc['f_cft'] = gollem.count_params()
     
+    gollem.freeze_for_pe_cft()
+    gpc['f_pe_cft'] = gollem.count_params()
+    
     if verbose:
         print(gpc)
     return gpc
 
-def main():
-    torch.manual_seed(42)
-    gollem_test()
-
 def gollem_training_test():
     # Gollem training pipeline
     pass
+
+def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--test-basic", action="store_true")
+    parser.add_argument("--test-freezing", action="store_true")
+    parser.add_argument("--test-training", action="store_true")
+    parser.add_argument("--test", "--test-all", action="store_true")
+    
+    parser.add_argument("--seed", type=int, default=42)
+    
+    args = parser.parse_args()
+    torch_seed = args.seed
+    #test_basic = args.test
+    if args.test:
+        TEST_BASE = True
+        TEST_FREEZE = True
+        TEST_TRAIN = True
+    else:
+        TEST_BASE = args.test_basic
+        TEST_FREEZE = args.test_freezing
+        TEST_TRAIN = args.test_training
+    
+    torch.manual_seed(torch_seed)
+    
+    if TEST_BASE:
+        gollem_test()
+    if TEST_FREEZE:
+        gollem_freezing_test()
+    if TEST_TRAIN:
+        gollem_training_test()
 
 if __name__ == "__main__":
     main()
