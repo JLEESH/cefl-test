@@ -22,7 +22,7 @@ class EHLGOLM(nn.Module):
         self.nlayers_olm = config.nlayers_olm
         self.ntypes = config.ntypes
 
-    def forward(self, prompt, layer_indices=None, weight_types=None):
+    def forward(self, prompt=None, input_ids=None, layer_indices=None, weight_types=None, **kwargs):
         # by default, the input to Gollem should be:
         # 1. list of indices and types for HN (can have default values)
         # 2. input for llm (data)
@@ -52,10 +52,18 @@ class EHLGOLM(nn.Module):
         #return olm_output
         
         # pass prompt to OLM
-        enc_olm = self.olm.tokenizer(prompt, return_tensors="pt")
-        #out_olm = self.olm.model.generate(input_ids=enc_olm.input_ids, max_new_tokens=128)
-        out_olm = self.olm.model.generate(input_ids=enc_olm.input_ids, max_new_tokens=12)
-        dec_olm = self.olm.tokenizer.decode(out_olm[0])
+        if prompt is not None:
+            enc_olm = self.olm.tokenizer(prompt, return_tensors="pt")
+            #out_olm = self.olm.model.generate(input_ids=enc_olm.input_ids, max_new_tokens=128)
+            out_olm = self.olm.model.generate(input_ids=enc_olm.input_ids, max_new_tokens=12)
+            dec_olm = self.olm.tokenizer.decode(out_olm[0])
+            return [dec_olm, out_olm]
+        elif input_ids is not None:
+            out_olm = self.olm.model.generate(input_ids=input_ids, max_new_tokens=12)
+            dec_olm = self.olm.tokenizer.decode(out_olm[0])
+            return out_olm
+        else:
+            raise ValueError("Provide ``prompt`` or ``input_ids`` for ``EHLGOLM.forward()``.")
         
         # return decoded text with the raw output
         return [dec_olm, out_olm]
@@ -66,13 +74,13 @@ class EHLGOLM(nn.Module):
                 if wt_i == 0:
                     #self.olm.model.model.layers[li].self_attn.v_proj.weight += lora_dict[li][wt_i]['A'] @ lora_dict[li][wt_i]['B']
                     org = self.olm.model.model.layers[li].self_attn.k_proj
-                    w = torch.nn.Parameter(lora_dict[li][wt_i]['A'] @ lora_dict[li][wt_i]['B'])
+                    w = torch.nn.Parameter(lora_dict[li][wt_i]['A'] @ lora_dict[li][wt_i]['B'], requires_grad=False)
                     self.olm.model.model.layers[li].self_attn.k_proj = LinearLoRA(org, w)
                     #self.olm.model.model.layers[li].self_attn.k_proj.weight = torch.nn.Parameter(torch.zeros((3200, 3200)))
                 elif wt_i == 1:
                     #self.olm.model.model.layers[li].self_attn.v_proj.weight += lora_dict[li][wt_i]['A'] @ lora_dict[li][wt_i]['B']
                     org = self.olm.model.model.layers[li].self_attn.v_proj
-                    w = torch.nn.Parameter(lora_dict[li][wt_i]['A'] @ lora_dict[li][wt_i]['B'])
+                    w = torch.nn.Parameter(lora_dict[li][wt_i]['A'] @ lora_dict[li][wt_i]['B'], requires_grad=False)
                     self.olm.model.model.layers[li].self_attn.v_proj = LinearLoRA(org, w)
                     #self.olm.model.model.layers[li].self_attn.v_proj.weight = torch.nn.Parameter(torch.zeros((3200, 3200)))
                     # other adjustments tried: amplifying w (x1000); setting ``torch.manual_seed(42)``; removing the adaptation process
@@ -169,7 +177,51 @@ def gollem_freezing_test(verbose=True):
     return gpc
 
 def gollem_training_test():
-    # Gollem training pipeline
+    print("Warning: ``gollem_training_test()`` is not yet implemented.")
+    return
+    raise NotImplementedError
+    import tqdm
+    
+    nEpochs = 3
+    nIterPerEpoch = 5
+    evalIter = 100
+    
+    # instantiate model
+    gollem = Gollem(Gollem.default_config)
+    
+    # generate a synthetic dataset
+    import random
+    
+    def generate_synth_data(causal=True):
+        nQuestions = 1000
+        qn_template = "What is the answer to the following mathematics equation?\n{}\nThe answer is: "
+        synth_data_mq = {}
+        for i in range(nQuestions):
+            a1 = random.randrange(100)
+            a2 = random.randrange(100)
+            op = '*'
+            r1 = a1 * a2
+            qn_str = "{} {} {} = " .format(a1, op, a2)
+            synth_data_mq[i] = {
+                'Q': qn_template.format(qn_str),
+                'A': str(r1)
+            }
+        if causal is True:
+            synth_data_mq_causal = {k : ''.join([v['Q'], v['A']]) for k, v in synth_data_mq.items()}
+            return synth_data_mq_causal
+        return synth_data_mq
+    synth_data_mq_causal = generate_synth_data(causal=True)
+    
+    tbar = tqdm(nEpochs * nIterPerEpoch)
+    for epoch in range(nEpochs):
+        for iter in range(nIterPerEpoch):
+            
+            gollem(synth_data_mq_causal[iter])
+            
+            if iter % evalIter == 0:
+                res_eval = gollem.evaluate_perf()
+                
+            tbar.update(nEpochs * nIterPerEpoch + iter)
     pass
 
 def main():

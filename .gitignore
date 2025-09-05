@@ -5,6 +5,7 @@ ignore/
 test_outputs/
 models/
 datasets/
+wandb/
 launch.json
 
 # Byte-compiled / optimized / DLL files

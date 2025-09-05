@@ -1,0 +1,22 @@
+DatasetDict({
+    train: Dataset({
+        features: ['_data_files', '_fingerprint', '_format_columns', '_format_kwargs', '_format_type', '_output_all_columns', '_split'],
+        num_rows: 1
+    })
+    test: Dataset({
+        features: ['_data_files', '_fingerprint', '_format_columns', '_format_kwargs', '_format_type', '_output_all_columns', '_split'],
+        num_rows: 1
+    })
+})
+
+# ``load_from_disk()``
+DatasetDict({
+    train: Dataset({
+        features: ['question', 'answer'],
+        num_rows: 7473
+    })
+    test: Dataset({
+        features: ['question', 'answer'],
+        num_rows: 1319
+    })
+})
