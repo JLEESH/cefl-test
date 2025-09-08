@@ -26,7 +26,11 @@ class EHLGOLM(nn.Module):
         # by default, the input to Gollem should be:
         # 1. list of indices and types for HN (can have default values)
         # 2. input for llm (data)
-        
+        if prompt is not None and input_ids is not None:
+            raise ValueError("``EHLGOLM.forward()``: Please only provide one of ``prompt`` or ``input_ids``, but not both")
+        elif prompt is None and input_ids is None:
+            raise ValueError("``EHLGOLM.forward()``: Provide ``prompt`` or ``input_ids``.")
+
         # train all indices by default
         if layer_indices is None:
             layer_indices = [n for n in range(self.nlayers_olm)]
@@ -36,15 +40,15 @@ class EHLGOLM(nn.Module):
             raise ValueError(
                 "``EHLGOLM.forward()``: the lengths of ``layer_indices`` and ``weight_types`` do not match."
             )
-        
+
         #ehlg_output_ab_dict = self.ehlg(layer_indices, weight_types, data_emb=None)
         #ehlg_output = ehlg_output_ab_dict
         ehlg_output = self.ehlg(layer_indices, weight_types, data_emb=None)
         ehlg_output_ab_dict = self.ehlg.reshape_output(ehlg_output, layer_indices, weight_types)
-        
+
         # add LoRA matrix outputs to OLM
         self.adapt_olm(lora_dict=ehlg_output_ab_dict)
-        
+
         #self.adapt(olm=self.olm, ehlg=self.ehlg)
         #self._adapt_olm(ehlg_output)
         #self._adapt_olm(self.ehlg(x))
@@ -52,23 +56,40 @@ class EHLGOLM(nn.Module):
         #     self.olm[k] += v
         #olm_output = self.olm(x)
         #return olm_output
-        
+
+        # # uncomment as needed
+        # if verbose:
+        #     import torchviz
+        #     dot = torchviz.make_dot(loss.mean(), params=dict(model.named_parameters()), show_attrs=True, show_saved=True)
+        #     #dot = torchviz.make_dot(loss.mean(), params=dict(model.named_parameters()), show_attrs=False, show_saved=False)
+        #     dot.format = 'png'
+        #     dot.render('dot_gollem_1_ignore')
+        #     return model
+
         # pass prompt to OLM
         if prompt is not None:
             enc_olm = self.olm.tokenizer(prompt, return_tensors="pt")
-            #out_olm = self.olm.model.generate(input_ids=enc_olm.input_ids, max_new_tokens=128)
-            out_olm = self.olm.model.generate(input_ids=enc_olm.input_ids, max_new_tokens=12)
-            dec_olm = self.olm.tokenizer.decode(out_olm[0])
-            return [dec_olm, out_olm]
-        elif input_ids is not None:
-            out_olm = self.olm.model.generate(input_ids=input_ids, max_new_tokens=12)
-            #dec_olm = self.olm.tokenizer.decode(out_olm[0])
-            return out_olm
-        else:
-            raise ValueError("Provide ``prompt`` or ``input_ids`` for ``EHLGOLM.forward()``.")
-        
-        # return decoded text with the raw output
-        return [dec_olm, out_olm]
+            input_ids = enc_olm.input_ids
+        #out_olm = self.olm.model.generate(input_ids=input_ids, max_new_tokens=128)
+        out_olm = self.olm.model.generate(input_ids=input_ids, max_new_tokens=12)
+        return out_olm
+
+        # # pass prompt to OLM
+        # if prompt is not None:
+        #     enc_olm = self.olm.tokenizer(prompt, return_tensors="pt")
+        #     #out_olm = self.olm.model.generate(input_ids=enc_olm.input_ids, max_new_tokens=128)
+        #     out_olm = self.olm.model.generate(input_ids=enc_olm.input_ids, max_new_tokens=12)
+        #     dec_olm = self.olm.tokenizer.decode(out_olm[0])
+        #     return [dec_olm, out_olm]
+        # elif input_ids is not None:
+        #     out_olm = self.olm.model.generate(input_ids=input_ids, max_new_tokens=12)
+        #     #dec_olm = self.olm.tokenizer.decode(out_olm[0])
+        #     return out_olm
+        # else:
+        #     raise ValueError("Provide ``prompt`` or ``input_ids`` for ``EHLGOLM.forward()``.")
+
+        # # return decoded text with the raw output
+        # return [dec_olm, out_olm]
 
     def adapt_olm(self, lora_dict):
         for li, wt in lora_dict.items():
@@ -109,22 +130,22 @@ class EHLGOLM(nn.Module):
     def freeze_for_cft(self):
         self.ehlg.freeze_for_cft()
         self.olm.freeze_for_cft()
-        
+
     def freeze_for_pe_cft(self):
         self.ehlg.freeze_for_pe_cft()
         self.olm.freeze_for_pe_cft()
-    
+
     def count_params(self, trainable_only=True):
         n_p_dict = {}
         n_p_ehlg_dict = self.ehlg.count_params(trainable_only)
         n_p_olm = self.olm.count_params(trainable_only)
         n_p_total = n_p_ehlg_dict[0] + n_p_olm
-        
+
         n_p_dict['ehlg'] = n_p_ehlg_dict
         n_p_dict['olm'] = n_p_olm
         n_p_dict['total'] = n_p_total
         return n_p_total, n_p_dict
-    
+
     default_config_dict = {
         'ehlg'          :   EHLG(EHLG.default_config),
         'olm'           :   OLM(OLM.default_config),
@@ -147,33 +168,36 @@ def gollem_test():
     gollem_model = Gollem(Gollem.default_config)
     gollem = gollem_model
     #[dec, raw] = gollem("This is a test sentence for Gollem.")
-    [dec, raw] = gollem("Make up a new word and explain what it means. The word and its meaning are: ")
+    #[dec, raw] = gollem("Make up a new word and explain what it means. The word and its meaning are: ")
+    out = gollem("Make up a new word and explain what it means. The word and its meaning are: ")
+    dec = gollem.olm.tokenizer.decode(out[0])
     print(dec)
-    return [dec, raw]
+    #return [dec, raw]
+    return [dec, out]
 
 def gollem_freezing_test(verbose=True):
     # test various freezing configurations
     gollem = Gollem(Gollem.default_config)
-    
+
     gollem_params_count = {}
     gpc = gollem_params_count
     gpc['init'] = gollem.count_params()
-    
+
     gollem.freeze_all()
     gpc['f_a'] = gollem.count_params()
-    
+
     gollem.unfreeze_all()
     gpc['uf_a'] = gollem.count_params()
-    
+
     gollem.freeze_for_fl()
     gpc['f_fl'] = gollem.count_params()
-    
+
     gollem.freeze_for_cft()
     gpc['f_cft'] = gollem.count_params()
-    
+
     gollem.freeze_for_pe_cft()
     gpc['f_pe_cft'] = gollem.count_params()
-    
+
     if verbose:
         print(gpc)
     return gpc
@@ -183,17 +207,17 @@ def gollem_training_test():
     return
     raise NotImplementedError
     import tqdm
-    
+
     nEpochs = 3
     nIterPerEpoch = 5
     evalIter = 100
-    
+
     # instantiate model
     gollem = Gollem(Gollem.default_config)
-    
+
     # generate a synthetic dataset
     import random
-    
+
     def generate_synth_data(causal=True):
         nQuestions = 1000
         qn_template = "What is the answer to the following mathematics equation?\n{}\nThe answer is: "
@@ -213,16 +237,16 @@ def gollem_training_test():
             return synth_data_mq_causal
         return synth_data_mq
     synth_data_mq_causal = generate_synth_data(causal=True)
-    
+
     tbar = tqdm(nEpochs * nIterPerEpoch)
     for epoch in range(nEpochs):
         for iter in range(nIterPerEpoch):
-            
+
             gollem(synth_data_mq_causal[iter])
-            
+
             if iter % evalIter == 0:
                 res_eval = gollem.evaluate_perf()
-                
+
             tbar.update(nEpochs * nIterPerEpoch + iter)
     pass
 
@@ -233,9 +257,9 @@ def main():
     parser.add_argument("--test-freezing", action="store_true")
     parser.add_argument("--test-training", action="store_true")
     parser.add_argument("--test", "--test-all", action="store_true")
-    
+
     parser.add_argument("--seed", type=int, default=42)
-    
+
     args = parser.parse_args()
     torch_seed = args.seed
     #test_basic = args.test
@@ -247,9 +271,9 @@ def main():
         TEST_BASE = args.test_basic
         TEST_FREEZE = args.test_freezing
         TEST_TRAIN = args.test_training
-    
+
     torch.manual_seed(torch_seed)
-    
+
     if TEST_BASE:
         gollem_test()
     if TEST_FREEZE:
