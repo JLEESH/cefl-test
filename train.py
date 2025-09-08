@@ -57,9 +57,7 @@ def gollem_test_train():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)
     model.device = device
-    #model.train()
     model.freeze_for_pe_cft()
-    #model.freeze_all()
     
     model.olm.tokenizer.pad_token = model.olm.tokenizer.eos_token
     
@@ -80,50 +78,6 @@ def gollem_test_train():
     #metric = 
     
     progress_bar = tqdm.tqdm(range(num_training_steps))
-    
-    data_collator = DataCollatorForLanguageModeling(model.olm.tokenizer, mlm=False)
-    
-    args = TrainingArguments(
-        #output_dir="codeparrot-ds",
-        output_dir=".",
-        
-        # per_device_train_batch_size=32,
-        # per_device_eval_batch_size=32,
-        per_device_train_batch_size=1,
-        per_device_eval_batch_size=1,
-        
-        #evaluation_strategy="steps",
-        #eval_steps=5_000,
-        #logging_steps=5_000,
-        #gradient_accumulation_steps=8,
-        num_train_epochs=1,
-        weight_decay=0.1,
-        warmup_steps=1_000,
-        
-        #lr_scheduler_type="cosine",
-        lr_scheduler_type="linear",
-        #learning_rate=5e-4,
-        learning_rate=5e-4,
-        
-        #save_steps=5_000,
-        fp16=True,
-        
-        #push_to_hub=True,
-        push_to_hub=False,
-    )
-
-    trainer = Trainer(
-        model=model,
-        tokenizer=model.olm.tokenizer,
-        args=args,
-        data_collator=data_collator,
-        # train_dataset=tokenized_datasets["train"],
-        # eval_dataset=tokenized_datasets["valid"],
-        train_dataset=ds_prec['train'],
-        eval_dataset=ds_prec['test'],
-    )
-    
-    trainer.train()
     
     eval_results = trainer.evaluate()
     return eval_results

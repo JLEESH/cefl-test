@@ -37,8 +37,10 @@ class EHLGOLM(nn.Module):
                 "``EHLGOLM.forward()``: the lengths of ``layer_indices`` and ``weight_types`` do not match."
             )
         
-        ehlg_output_ab_dict = self.ehlg(layer_indices, weight_types, data_emb=None)
-        ehlg_output = ehlg_output_ab_dict
+        #ehlg_output_ab_dict = self.ehlg(layer_indices, weight_types, data_emb=None)
+        #ehlg_output = ehlg_output_ab_dict
+        ehlg_output = self.ehlg(layer_indices, weight_types, data_emb=None)
+        ehlg_output_ab_dict = self.ehlg.reshape_output(ehlg_output, layer_indices, weight_types)
         
         # add LoRA matrix outputs to OLM
         self.adapt_olm(lora_dict=ehlg_output_ab_dict)
@@ -60,7 +62,7 @@ class EHLGOLM(nn.Module):
             return [dec_olm, out_olm]
         elif input_ids is not None:
             out_olm = self.olm.model.generate(input_ids=input_ids, max_new_tokens=12)
-            dec_olm = self.olm.tokenizer.decode(out_olm[0])
+            #dec_olm = self.olm.tokenizer.decode(out_olm[0])
             return out_olm
         else:
             raise ValueError("Provide ``prompt`` or ``input_ids`` for ``EHLGOLM.forward()``.")

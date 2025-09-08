@@ -37,6 +37,7 @@ class EMBGPT2LoRAGen(nn.Module):
         # (Perhaps some sort of initialisation trick will do.)
         # We can also consider generating just one of the two LoRA matrices, in addition.
         # (Less gradients and slightly smaller model size)
+        # For now, we are keeping it as it is to use as a baseline
         self.o2l = nn.Linear(config.lora_gen_in_dim, config.lora_gen_out_dim)
         
         # LoRA configurations
@@ -47,12 +48,17 @@ class EMBGPT2LoRAGen(nn.Module):
     def forward(self, layer_indices, weight_types, data_emb=None):
         x = self.make_input_batch(layer_indices, weight_types, data_emb)
         x = self._inner_forward(x)
+        return x
+    
+    def forward_and_reshape(self, layer_indices, weight_types, data_emb=None):
+        x = self.forward(layer_indices, weight_types, data_emb)
         ab_dict = self.reshape_output(x, layer_indices, weight_types)
         return ab_dict
     
     def _inner_forward(self, x):
         # pass embeddings to the hypernetwork and the resulting output to the lora generator
         for layer_index in range(len(self.gpt2.transformer.h)):
+        #for layer_index in range(1):
             x = self.gpt2.transformer.h[layer_index](x)[0]
         x = self.gpt2.transformer.ln_f(x)
         x = self.o2l(x)
@@ -69,6 +75,8 @@ class EMBGPT2LoRAGen(nn.Module):
             for wt in weight_types[i]:
                 # extract relevant row
                 x_i_t = x[:,counter,:]
+                # TODO: extract using different ops?
+                # Or skip the reshaping step here and move it to gollem?
                 
                 # reshape to lora dimensions
                 A_size = self.lora_rank * self.lora_in_dim
@@ -227,7 +235,9 @@ def ehlg_test():
     
     print(f"Testing forward pass with ``li={layer_indices}`` and ``wt={weight_types}``...")
     
-    output_ab_dict = ehlg(layer_indices, weight_types)
+    #output_ab_dict = ehlg(layer_indices, weight_types)
+    output = ehlg(layer_indices, weight_types)
+    output_ab_dict = ehlg.reshape_output(output, layer_indices, weight_types)
     
     print(f"Output from ``ehlg``:\n{output_ab_dict}")
     
