@@ -3,8 +3,8 @@ import torch.nn as nn
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from types import SimpleNamespace
 
-DEFAULT_GPT2_MODEL_PATH = "../models/gpt2"
-DEFAULT_GPT2_TOKENIZER_PATH = "../tokenizers/gpt2"
+DEFAULT_GPT2_MODEL_PATH = "../models/gpt2" # NOTE: change as needed
+DEFAULT_GPT2_TOKENIZER_PATH = "../tokenizers/gpt2" # likewise
 
 class EMBGPT2LoRAGen(nn.Module):
     def __init__(self, config):
@@ -80,8 +80,6 @@ class EMBGPT2LoRAGen(nn.Module):
             for wt in weight_types[i]:
                 # extract relevant row
                 x_i_t = x[:,counter,:]
-                # TODO: extract using different ops?
-                # Or skip the reshaping step here and move it to gollem?
 
                 # reshape to lora dimensions
                 A_size = self.lora_rank * self.lora_in_dim
@@ -98,7 +96,7 @@ class EMBGPT2LoRAGen(nn.Module):
 
     def make_input(self, layer_index, weight_type, data_emb=None):
         x = self.emb(layer_index * self.ntypes + weight_type)
-        # TODO: test appending data_emb
+        # TODO: implement appending data_emb
         if data_emb is not None:
             x = torch.cat((x, data_emb))
         x = x.reshape((1, 1, x.shape[-1]))
@@ -116,7 +114,7 @@ class EMBGPT2LoRAGen(nn.Module):
         x = self.emb(torch.tensor(indices_list))
 
         # append data_emb if any
-        # TODO: test appending data_emb
+        # TODO: implement appending data_emb
         if data_emb is not None:
             x = torch.cat((x, data_emb))
         x = x.reshape((1, x.shape[-2], x.shape[-1]))
@@ -204,7 +202,7 @@ class EMBGPT2LoRAGen(nn.Module):
         'ntypes'            :   2,
         'emb_output_dim'    :   DEFAULT_EMB_DIM,
         'lora_gen_in_dim'   :   DEFAULT_EMB_DIM, # (=gpt2 output dim.)
-        'lora_gen_out_dim'  :   DEFAULT_LORA_DIM * DEFAULT_LORA_RANK * 2,
+        'lora_gen_out_dim'  :   DEFAULT_LORA_DIM * DEFAULT_LORA_RANK * 2, # NOTE: HUGE. Reduce as necesary.
         'lora_rank'         :   DEFAULT_LORA_RANK,
         'lora_in_dim'       :   DEFAULT_LORA_DIM,
         'lora_out_dim'      :   DEFAULT_LORA_DIM
@@ -240,7 +238,6 @@ def ehlg_test():
 
     print(f"Testing forward pass with ``li={layer_indices}`` and ``wt={weight_types}``...")
 
-    #output_ab_dict = ehlg(layer_indices, weight_types)
     output = ehlg(layer_indices, weight_types)
     output_ab_dict = ehlg.reshape_output(output, layer_indices, weight_types)
 

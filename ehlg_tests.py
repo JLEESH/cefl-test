@@ -3,8 +3,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-layer_indices_default_all = [n for n in range(26)]
-weight_types_default_all = [[i for i in range(2)] for _ in range(len(layer_indices_default_all))]
+layer_indices_default_all = [n for n in range(26)] # NOTE: for use in this file only; no. of layers must match model!
+weight_types_default_all = [[i for i in range(2)] for _ in range(len(layer_indices_default_all))] # likewise, but with weight types
 lia = layer_indices_default_all
 wta = weight_types_default_all
 
@@ -23,19 +23,13 @@ def test_ehlg_train_to_zero(nSteps=1000, model=None, verbose=False):
     optim = torch.optim.SGD(model.parameters(), lr=1e-2, momentum=0.1)
     #optim = torch.optim.AdamW(model.parameters(), lr=1e-4)
 
-    # accum_loss = 0.0
-
     for i in range(nSteps):
         out = model(layer_indices_default_all, weight_types_default_all)
         #target = torch.zeros(torch.Size([3200, 8]))
-        #target = torch.zeros(torch.Size([3200, 8]))
         target = torch.zeros(torch.Size(out.shape))
-
-        #loss = (target - out[0][0]['A']).sum()
-        #loss = (out[0][0]['A'] - target).sum() / (3200 * 8)
-        #loss = (out[0][0]['A'] - target).sum()
-        #loss = F.mse_loss(out[0][0]['A'], target=target)
         loss = F.mse_loss(out, target=target)
+        loss.backward()
+        optim.step()
 
         # # uncomment as needed
         # if verbose:
@@ -46,17 +40,10 @@ def test_ehlg_train_to_zero(nSteps=1000, model=None, verbose=False):
         #     dot.render('dot_9_ignore')
         #     return model
 
-        loss.backward()
-
-        #accum_loss += float(loss)
-
-        optim.step() #gradient descent
-
         if verbose:
             if (i % (nSteps / 10)) == 0:
                 print(f"Step {i+1:5d} of {nSteps:5d} complete...")
-            #avg_loss = accum_loss / (i + 1)
-            print(f"loss: {float(loss.detach())}")
+            print(f"loss: {float(loss.detach())}") # tab as needed
 
     if verbose:
             print(f"Step {i+1:5d} of {nSteps:5d} complete...")
@@ -81,7 +68,6 @@ def main():
 
     print("mock training model (to output zeros)...")
     model = test_ehlg_train_to_zero(nSteps=100, model=model, verbose=True)
-    #model = test_ehlg_train_to_zero(100, verbose=False)
 
     print("checking mock trained model...")
     check_ehlg_training_mock(model)

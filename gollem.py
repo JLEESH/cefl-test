@@ -21,11 +21,13 @@ class EHLGOLM(nn.Module):
         self.scale_olm = config.scale_olm
         self.nlayers_olm = config.nlayers_olm
         self.ntypes = config.ntypes
+        self.adapt_olm()
 
     def forward(self, prompt=None, input_ids=None, layer_indices=None, weight_types=None, **kwargs):
         # by default, the input to Gollem should be:
         # 1. list of indices and types for HN (can have default values)
         # 2. input for llm (data)
+
         if prompt is not None and input_ids is not None:
             raise ValueError("``EHLGOLM.forward()``: Please only provide one of ``prompt`` or ``input_ids``, but not both")
         elif prompt is None and input_ids is None:
@@ -41,21 +43,12 @@ class EHLGOLM(nn.Module):
                 "``EHLGOLM.forward()``: the lengths of ``layer_indices`` and ``weight_types`` do not match."
             )
 
-        #ehlg_output_ab_dict = self.ehlg(layer_indices, weight_types, data_emb=None)
-        #ehlg_output = ehlg_output_ab_dict
+        # obtain LoRA matrix weights and reshape
         ehlg_output = self.ehlg(layer_indices, weight_types, data_emb=None)
         ehlg_output_ab_dict = self.ehlg.reshape_output(ehlg_output, layer_indices, weight_types)
 
         # add LoRA matrix outputs to OLM
-        self.adapt_olm(lora_dict=ehlg_output_ab_dict)
-
-        #self.adapt(olm=self.olm, ehlg=self.ehlg)
-        #self._adapt_olm(ehlg_output)
-        #self._adapt_olm(self.ehlg(x))
-        # for k, v in ehlg_output.items():
-        #     self.olm[k] += v
-        #olm_output = self.olm(x)
-        #return olm_output
+        self.olm_add_lora(lora_dict=ehlg_output_ab_dict)
 
         # # uncomment as needed
         # if verbose:
@@ -71,42 +64,45 @@ class EHLGOLM(nn.Module):
             enc_olm = self.olm.tokenizer(prompt, return_tensors="pt")
             input_ids = enc_olm.input_ids
         #out_olm = self.olm.model.generate(input_ids=input_ids, max_new_tokens=128)
-        out_olm = self.olm.model.generate(input_ids=input_ids, max_new_tokens=12)
+        # out_olm = self.olm.model.generate(
+        #     input_ids=input_ids,
+        #     max_new_tokens=12,
+        #     output_scores=True,
+        #     return_dict_in_generate=True)
+        out_olm = self.olm.model(input_ids) # get CausalLMOutputWithPast
+        #out = out_olm['logits']
         return out_olm
 
-        # # pass prompt to OLM
-        # if prompt is not None:
-        #     enc_olm = self.olm.tokenizer(prompt, return_tensors="pt")
-        #     #out_olm = self.olm.model.generate(input_ids=enc_olm.input_ids, max_new_tokens=128)
-        #     out_olm = self.olm.model.generate(input_ids=enc_olm.input_ids, max_new_tokens=12)
-        #     dec_olm = self.olm.tokenizer.decode(out_olm[0])
-        #     return [dec_olm, out_olm]
-        # elif input_ids is not None:
-        #     out_olm = self.olm.model.generate(input_ids=input_ids, max_new_tokens=12)
-        #     #dec_olm = self.olm.tokenizer.decode(out_olm[0])
-        #     return out_olm
-        # else:
-        #     raise ValueError("Provide ``prompt`` or ``input_ids`` for ``EHLGOLM.forward()``.")
-
-        # # return decoded text with the raw output
-        # return [dec_olm, out_olm]
-
-    def adapt_olm(self, lora_dict):
+    def adapt_olm(self):
+        for li in range(self.ehlg.nlayers):
+            for wt_i in range(self.ehlg.ntypes):
+                if wt_i == 0:
+                    org = self.olm.model.model.layers[li].self_attn.k_proj
+                    #w = torch.nn.Parameter(torch.zeros_like(self.olm.model.model.layers[li].self_attn.k_proj.weight), requires_grad=False)
+                    #self.olm.model.model.layers[li].self_attn.v_proj = LinearLoRA(org, w)
+                    self.olm.model.model.layers[li].self_attn.k_proj = LinearLoRA(org)
+                elif wt_i == 1:
+                    org = self.olm.model.model.layers[li].self_attn.v_proj
+                    #w = torch.nn.Parameter(torch.zeros_like(self.olm.model.model.layers[li].self_attn.v_proj.weight), requires_grad=False)
+                    #self.olm.model.model.layers[li].self_attn.v_proj = LinearLoRA(org, w)
+                    self.olm.model.model.layers[li].self_attn.v_proj = LinearLoRA(org)
+                else:
+                    raise NotImplementedError
+        return self.olm
+    
+    def olm_add_lora(self, lora_dict):
         for li, wt in lora_dict.items():
             for wt_i in wt:
                 if wt_i == 0:
-                    #self.olm.model.model.layers[li].self_attn.v_proj.weight += lora_dict[li][wt_i]['A'] @ lora_dict[li][wt_i]['B']
-                    org = self.olm.model.model.layers[li].self_attn.k_proj
-                    w = torch.nn.Parameter(lora_dict[li][wt_i]['A'] @ lora_dict[li][wt_i]['B'], requires_grad=False)
-                    self.olm.model.model.layers[li].self_attn.k_proj = LinearLoRA(org, w)
-                    #self.olm.model.model.layers[li].self_attn.k_proj.weight = torch.nn.Parameter(torch.zeros((3200, 3200)))
+                    self.olm.model.model.layers[li].self_attn.k_proj.add_w(lora_dict[li][wt_i]['A'] @ lora_dict[li][wt_i]['B'])
+                    #org = self.olm.model.model.layers[li].self_attn.k_proj
+                    #w = torch.nn.Parameter(lora_dict[li][wt_i]['A'] @ lora_dict[li][wt_i]['B'], requires_grad=True)
+                    #self.olm.model.model.layers[li].self_attn.k_proj = LinearLoRA(org, w)
                 elif wt_i == 1:
-                    #self.olm.model.model.layers[li].self_attn.v_proj.weight += lora_dict[li][wt_i]['A'] @ lora_dict[li][wt_i]['B']
-                    org = self.olm.model.model.layers[li].self_attn.v_proj
-                    w = torch.nn.Parameter(lora_dict[li][wt_i]['A'] @ lora_dict[li][wt_i]['B'], requires_grad=False)
-                    self.olm.model.model.layers[li].self_attn.v_proj = LinearLoRA(org, w)
-                    #self.olm.model.model.layers[li].self_attn.v_proj.weight = torch.nn.Parameter(torch.zeros((3200, 3200)))
-                    # other adjustments tried: amplifying w (x1000); setting ``torch.manual_seed(42)``; removing the adaptation process
+                    self.olm.model.model.layers[li].self_attn.v_proj.add_w(lora_dict[li][wt_i]['A'] @ lora_dict[li][wt_i]['B'])
+                    #org = self.olm.model.model.layers[li].self_attn.v_proj
+                    #w = torch.nn.Parameter(lora_dict[li][wt_i]['A'] @ lora_dict[li][wt_i]['B'], requires_grad=True)
+                    #self.olm.model.model.layers[li].self_attn.v_proj = LinearLoRA(org, w)
                 else:
                     raise NotImplementedError
         return self.olm
@@ -167,12 +163,9 @@ Gollem = EHLGOLM
 def gollem_test():
     gollem_model = Gollem(Gollem.default_config)
     gollem = gollem_model
-    #[dec, raw] = gollem("This is a test sentence for Gollem.")
-    #[dec, raw] = gollem("Make up a new word and explain what it means. The word and its meaning are: ")
     out = gollem("Make up a new word and explain what it means. The word and its meaning are: ")
     dec = gollem.olm.tokenizer.decode(out[0])
     print(dec)
-    #return [dec, raw]
     return [dec, out]
 
 def gollem_freezing_test(verbose=True):
