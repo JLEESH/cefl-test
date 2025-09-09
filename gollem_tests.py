@@ -1,4 +1,3 @@
-#import ehlg
 import gollem
 import torch
 import torch.nn as nn
@@ -12,7 +11,6 @@ default_prompt = "This is a sample sentence."
 
 def test_gollem_train_to_zero(nSteps=1000, model=None, verbose=False):
     if model is None:
-        #model = ehlg.EHLG(ehlg.EHLG.default_config)
         model = gollem.Gollem(gollem.Gollem.default_config)
     if type(model) is not gollem.Gollem:
         raise ValueError("``model`` passed to ``test_ehlg_train_to_zero`` is of the wrong type.")
@@ -69,7 +67,7 @@ def get_gollem_output(model, prompt=default_prompt, adapted=True, do_sample=Fals
         adapted=adapted,
         do_sample=do_sample)
     out = model.olm.tokenizer.decode(out[0])
-    
+
     if verbose:
         print(out)
     return out
@@ -82,14 +80,12 @@ def main():
     args = parser.parse_args()
     prompt = args.prompt
     do_sample = args.do_sample
-    
-    
-    #model = ehlg.EHLG(ehlg.EHLG.default_config)
+
     model = gollem.Gollem(gollem.Gollem.default_config)
 
     print("\nchecking model...")
     get_gollem_output(model, prompt=prompt, do_sample=do_sample)
-    
+
     print("\nchecking model (unadapted output)...")
     get_gollem_output(model, prompt=prompt, adapted=False, do_sample=do_sample)
 
@@ -99,7 +95,7 @@ def main():
 
     print("\nchecking mock trained model...")
     get_gollem_output(model, prompt=prompt, do_sample=do_sample)
-    
+
     print("\nchecking mock trained model (unadapted output)...")
     get_gollem_output(model, prompt=prompt, adapted=False, do_sample=do_sample)
 

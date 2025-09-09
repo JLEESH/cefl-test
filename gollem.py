@@ -63,14 +63,7 @@ class EHLGOLM(nn.Module):
         if prompt is not None:
             enc_olm = self.olm.tokenizer(prompt, return_tensors="pt")
             input_ids = enc_olm.input_ids
-        #out_olm = self.olm.model.generate(input_ids=input_ids, max_new_tokens=128)
-        # out_olm = self.olm.model.generate(
-        #     input_ids=input_ids,
-        #     max_new_tokens=12,
-        #     output_scores=True,
-        #     return_dict_in_generate=True)
         out_olm = self.olm.model(input_ids) # get CausalLMOutputWithPast
-        #out = out_olm['logits']
         return out_olm
 
     def generate(self,
@@ -131,13 +124,9 @@ class EHLGOLM(nn.Module):
             for wt_i in range(self.ehlg.ntypes):
                 if wt_i == 0:
                     org = self.olm.model.model.layers[li].self_attn.k_proj
-                    #w = torch.nn.Parameter(torch.zeros_like(self.olm.model.model.layers[li].self_attn.k_proj.weight), requires_grad=False)
-                    #self.olm.model.model.layers[li].self_attn.v_proj = LinearLoRA(org, w)
                     self.olm.model.model.layers[li].self_attn.k_proj = LinearLoRA(org)
                 elif wt_i == 1:
                     org = self.olm.model.model.layers[li].self_attn.v_proj
-                    #w = torch.nn.Parameter(torch.zeros_like(self.olm.model.model.layers[li].self_attn.v_proj.weight), requires_grad=False)
-                    #self.olm.model.model.layers[li].self_attn.v_proj = LinearLoRA(org, w)
                     self.olm.model.model.layers[li].self_attn.v_proj = LinearLoRA(org)
                 else:
                     raise NotImplementedError
@@ -148,18 +137,12 @@ class EHLGOLM(nn.Module):
             for wt_i in wt:
                 if wt_i == 0:
                     self.olm.model.model.layers[li].self_attn.k_proj.attach_w(lora_dict[li][wt_i]['A'] @ lora_dict[li][wt_i]['B'])
-                    #org = self.olm.model.model.layers[li].self_attn.k_proj
-                    #w = torch.nn.Parameter(lora_dict[li][wt_i]['A'] @ lora_dict[li][wt_i]['B'], requires_grad=True)
-                    #self.olm.model.model.layers[li].self_attn.k_proj = LinearLoRA(org, w)
                 elif wt_i == 1:
                     self.olm.model.model.layers[li].self_attn.v_proj.attach_w(lora_dict[li][wt_i]['A'] @ lora_dict[li][wt_i]['B'])
-                    #org = self.olm.model.model.layers[li].self_attn.v_proj
-                    #w = torch.nn.Parameter(lora_dict[li][wt_i]['A'] @ lora_dict[li][wt_i]['B'], requires_grad=True)
-                    #self.olm.model.model.layers[li].self_attn.v_proj = LinearLoRA(org, w)
                 else:
                     raise NotImplementedError
         return self.olm
-    
+
     def olm_remove_lora(self):
         for li in range(self.ehlg.nlayers):
             for wt_i in range(self.ehlg.ntypes):
@@ -216,13 +199,9 @@ class EHLGOLM(nn.Module):
     }
     default_config = SimpleNamespace(default_config_dict)
 # Aliases (perhaps to decide on just a few):
-# Naming Rationale: Embedding, Hypernetwork, LLM
+# Naming Rationale: Embedding, Hypernetwork, LoRA Generator, LLM
 # EHLGOLM <- EHLG + OLM
 Gollem = EHLGOLM
-#GOHLLEM = EHLGOLM
-#Golem = GOHLLEM
-#GOLLEM = Gollem
-#EHL = EHLGOLM
 
 def gollem_test():
     gollem_model = Gollem(Gollem.default_config)
@@ -262,50 +241,6 @@ def gollem_freezing_test(verbose=True):
 def gollem_training_test():
     print("Warning: ``gollem_training_test()`` is not yet implemented.")
     return
-    raise NotImplementedError
-    import tqdm
-
-    nEpochs = 3
-    nIterPerEpoch = 5
-    evalIter = 100
-
-    # instantiate model
-    gollem = Gollem(Gollem.default_config)
-
-    # generate a synthetic dataset
-    import random
-
-    def generate_synth_data(causal=True):
-        nQuestions = 1000
-        qn_template = "What is the answer to the following mathematics equation?\n{}\nThe answer is: "
-        synth_data_mq = {}
-        for i in range(nQuestions):
-            a1 = random.randrange(100)
-            a2 = random.randrange(100)
-            op = '*'
-            r1 = a1 * a2
-            qn_str = "{} {} {} = " .format(a1, op, a2)
-            synth_data_mq[i] = {
-                'Q': qn_template.format(qn_str),
-                'A': str(r1)
-            }
-        if causal is True:
-            synth_data_mq_causal = {k : ''.join([v['Q'], v['A']]) for k, v in synth_data_mq.items()}
-            return synth_data_mq_causal
-        return synth_data_mq
-    synth_data_mq_causal = generate_synth_data(causal=True)
-
-    tbar = tqdm(nEpochs * nIterPerEpoch)
-    for epoch in range(nEpochs):
-        for iter in range(nIterPerEpoch):
-
-            gollem(synth_data_mq_causal[iter])
-
-            if iter % evalIter == 0:
-                res_eval = gollem.evaluate_perf()
-
-            tbar.update(nEpochs * nIterPerEpoch + iter)
-    pass
 
 def main():
     import argparse
@@ -314,7 +249,6 @@ def main():
     parser.add_argument("--test-freezing", action="store_true")
     parser.add_argument("--test-training", action="store_true")
     parser.add_argument("--test", "--test-all", action="store_true")
-
     parser.add_argument("--seed", type=int, default=42)
 
     args = parser.parse_args()
