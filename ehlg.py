@@ -16,6 +16,8 @@ class EMBGPT2LoRAGen(nn.Module):
         self.ntypes = config.ntypes
         self.n_emb_types = self.nlayers * self.ntypes
         self.emb = nn.Embedding(self.n_emb_types, config.emb_output_dim)
+        # with torch.no_grad(): # gpt2 output can still be something other than 0
+        #    self.emb.weight.fill_(0)
 
         # Hypernetwork and aliases
         self.gpt2 = config.gpt2 # centralised-fine-tuned or pretrained gpt2
@@ -164,6 +166,9 @@ class EMBGPT2LoRAGen(nn.Module):
         else:
             self.unfreeze_hypernetwork()
         self.unfreeze_o2l()
+
+    def freeze_for_ehlg_tuning(self):
+        self._freeze_all(requires_grad=True)
 
     def freeze_for_pe_cft(self, freeze_hypernetwork=True):
         if freeze_hypernetwork:

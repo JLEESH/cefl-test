@@ -35,6 +35,9 @@ class OpenLLaMAv2Model(nn.Module):
     def freeze_for_cft(self):
         self.unfreeze_all()
 
+    def freeze_for_ehlg_tuning(self):
+        self.freeze_all()
+
     def freeze_for_pe_cft(self):
         self.freeze_all()
 

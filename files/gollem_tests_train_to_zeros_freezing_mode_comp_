@@ -1,0 +1,229 @@
+checking model...
+<s>This is a sample sentence.çaPLIEDgrassviaesse EbPresscdcd mystermessageInfo Fairек
+
+checking model (unadapted output)...
+<s>This is a sample sentence.
+This is a sample sentence.
+This is a sample
+
+mock training model...
+param count: (39412736, {'ehlg': (39412736, {'emb': 39936, 'o2l': 39372800, 'model': 0}), 'olm': 0, 'total': 39412736})
+Step     1 of    10 complete...
+loss: 10.230361938476562
+Step     2 of    10 complete...
+loss: 0.0
+Step     3 of    10 complete...
+loss: 0.0
+Step     4 of    10 complete...
+loss: 0.0
+Step     5 of    10 complete...
+loss: 0.0
+Step     6 of    10 complete...
+loss: 0.0
+Step     7 of    10 complete...
+loss: 0.0
+Step     8 of    10 complete...
+loss: 0.0
+Step     9 of    10 complete...
+loss: 0.0
+Step    10 of    10 complete...
+loss: 0.0
+Step    10 of    10 complete...
+
+checking mock trained model...
+<s> This is a sample sentence.<unk><unk><unk><unk><unk><unk><unk><unk><unk><unk><unk><unk>
+
+checking mock trained model (unadapted output)...
+<s>This is a sample sentence.
+This is a sample sentence.
+This is a sample
+
+
+
+
+
+
+
+
+(ANOTHER RUN; nans...)
+checking model...
+<s>This is a sample sentence.rillap Sunny Froikopoon debut celjan early Lyricsernet
+
+checking model (unadapted output)...
+<s>This is a sample sentence.
+This is a sample sentence.
+This is a sample
+
+mock training model (mode: train_to_zero)...
+param count: (39412736, {'ehlg': (39412736, {'emb': 39936, 'o2l': 39372800, 'model': 0}), 'olm': 0, 'total': 39412736})
+freezing config: <function EHLGOLM.freeze_for_pe_cft at 0x7fe0b9900d60>
+
+Step     1 of    10 complete...
+loss: 7.7240071296691895
+Step     2 of    10 complete...
+loss: 3.8555407524108887
+Step     3 of    10 complete...
+loss: nan
+Step     4 of    10 complete...
+loss: nan
+Step     5 of    10 complete...
+loss: nan
+Step     6 of    10 complete...
+loss: nan
+Step     7 of    10 complete...
+loss: nan
+Step     8 of    10 complete...
+loss: nan
+Step     9 of    10 complete...
+loss: nan
+Step    10 of    10 complete...
+loss: nan
+Step    10 of    10 complete...
+
+checking mock trained model...
+<s> This is a sample sentence.<unk><unk><unk><unk><unk><unk><unk><unk><unk><unk><unk><unk>
+
+checking mock trained model (unadapted output)...
+<s>This is a sample sentence.
+This is a sample sentence.
+This is a sample
+
+
+
+checking model...
+<s>This is a sample sentence.agma Cub haṙ WARRournamentegugexuder ens Caterpot
+
+checking model (unadapted output)...
+<s>This is a sample sentence.
+This is a sample sentence.
+This is a sample
+
+
+
+
+
+
+(YET ANOTHER RUN)
+mock training model (mode: train_to_zero)...
+param count: (39412736, {'ehlg': (39412736, {'emb': 39936, 'o2l': 39372800, 'model': 0}), 'olm': 0, 'total': 39412736})
+freezing config: <function EHLGOLM.freeze_for_pe_cft at 0x7f1ab9910d60>
+
+Step     1 of    10 complete...
+loss: 7.2549357414245605
+Step     2 of    10 complete...
+loss: 0.0
+Step     3 of    10 complete...
+loss: 0.0
+Step     4 of    10 complete...
+loss: 0.0
+Step     5 of    10 complete...
+loss: 0.0
+Step     6 of    10 complete...
+loss: 0.0
+Step     7 of    10 complete...
+loss: 0.0
+Step     8 of    10 complete...
+loss: 0.0
+Step     9 of    10 complete...
+loss: 0.0
+Step    10 of    10 complete...
+loss: 0.0
+Step    10 of    10 complete...
+
+checking mock trained model...
+<s> This is a sample sentence.<unk><unk><unk><unk><unk><unk><unk><unk><unk><unk><unk><unk>
+
+checking mock trained model (unadapted output)...
+<s>This is a sample sentence.
+This is a sample sentence.
+This is a sample
+
+
+(``out`` initially and after one learning step)
+out
+tensor([[[-2.5418,  0.5503, -0.1320,  ..., -0.3303,  2.9711,  1.4512],
+         [-5.1987, -2.7299, -0.9728,  ..., -3.3872,  0.9748, -2.0979],
+         [-0.6918, -1.2676, -0.2128,  ..., -2.4430,  3.8701, -0.9541],
+         ...,
+         [-2.3002, -3.0830, -2.0307,  ..., -3.9959, -4.7260, -2.2227],
+         [ 1.0661,  3.5711,  0.9938,  ...,  4.7633,  0.7411,  4.0743],
+         [ 0.3633,  0.2009, -5.2538,  ...,  3.0743, -0.5186, -1.2662]]],
+       grad_fn=<UnsafeViewBackward0>)
+out
+tensor([[[0., 0., 0.,  ..., 0., 0., 0.],
+         [0., 0., 0.,  ..., 0., 0., 0.],
+         [0., 0., 0.,  ..., 0., 0., 0.],
+         ...,
+         [0., 0., 0.,  ..., 0., 0., 0.],
+         [0., 0., 0.,  ..., 0., 0., 0.],
+         [0., 0., 0.,  ..., 0., 0., 0.]]], grad_fn=<UnsafeViewBackward0>)
+
+
+(Meanwhile, with ``freeze_for_fl``...)
+out
+tensor([[[ 0.8992, -0.3518,  4.6779,  ..., -0.4399,  1.0812,  2.1666],
+         [ 3.7350,  3.6759,  5.5059,  ..., -2.3421,  1.8434,  3.8277],
+         [ 9.6803,  7.6813,  8.4208,  ...,  5.2712,  6.2490,  3.8146],
+         ...,
+         [ 8.2376,  5.3730,  8.8372,  ...,  3.0937,  5.6390,  6.1714],
+         [ 6.4629,  4.0934,  3.6070,  ...,  0.9962,  0.8027,  3.1356],
+         [ 4.0818,  4.6120, -1.1584,  ...,  1.8898,  2.6554,  4.9683]]],
+       grad_fn=<UnsafeViewBackward0>)
+out
+tensor([[[-1.1206e+00,  2.3999e+00,  3.1120e-01,  ..., -2.5681e-02,
+           1.7957e+00,  1.3160e+00],
+         [ 4.0544e-04,  4.0587e+00,  1.4449e+00,  ...,  1.5711e+00,
+           3.8364e+00,  3.4268e+00],
+         [ 4.8027e+00,  5.0995e+00,  3.4138e+00,  ...,  1.6324e+00,
+           2.2100e+00,  3.3254e+00],
+         ...,
+         [ 1.0931e+00,  1.3387e+00,  4.1974e-01,  ..., -2.1021e+00,
+           1.4465e-02, -5.0262e+00],
+         [ 7.4349e-01, -2.9762e-01,  2.7874e+00,  ..., -2.3212e+00,
+          -2.1942e+00, -4.6391e+00],
+         [-4.3568e-01,  3.7087e-01, -1.9222e+00,  ...,  1.0123e+00,
+           4.0646e+00,  1.7620e+00]]], grad_fn=<UnsafeViewBackward0>)
+
+
+
+checking model...
+<s>This is a sample sentence. Tank continuing Signalirlines AdvertisMONacketsoreonutaciRYpread
+
+checking model (unadapted output)...
+<s>This is a sample sentence.
+This is a sample sentence.
+This is a sample
+
+mock training model (mode: train_to_zero)...
+param count: (39936, {'ehlg': (39936, {'emb': 39936, 'o2l': 0, 'model': 0}), 'olm': 0, 'total': 39936})
+freezing config: <function EHLGOLM.freeze_for_fl at 0x7f5a2c6b8cc0>
+
+Step     1 of    10 complete...
+loss: 14.682676315307617
+Step     2 of    10 complete...
+loss: 7.152165412902832
+Step     3 of    10 complete...
+loss: 9.03981876373291
+Step     4 of    10 complete...
+loss: 10.477950096130371
+Step     5 of    10 complete...
+loss: 8.418404579162598
+Step     6 of    10 complete...
+loss: 5.544630527496338
+Step     7 of    10 complete...
+loss: 8.448457717895508
+Step     8 of    10 complete...
+loss: 9.26115608215332
+Step     9 of    10 complete...
+loss: 9.130215644836426
+Step    10 of    10 complete...
+loss: 5.056640625
+Step    10 of    10 complete...
+
+checking mock trained model...
+<s>This is a sample sentence.aya rushedaskets ALSsett rejected grant herselfokкаhusufficient
+
+checking mock trained model (unadapted output)...
+<s>This is a sample sentence.
+This is a sample sentence.
+This is a sample

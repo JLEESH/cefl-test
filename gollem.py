@@ -64,7 +64,7 @@ class EHLGOLM(nn.Module):
             enc_olm = self.olm.tokenizer(prompt, return_tensors="pt")
             input_ids = enc_olm.input_ids
         out_olm = self.olm.model(input_ids) # get CausalLMOutputWithPast
-        return out_olm
+        return out_olm.logits
 
     def generate(self,
         prompt=None,
@@ -173,6 +173,10 @@ class EHLGOLM(nn.Module):
     def freeze_for_cft(self):
         self.ehlg.freeze_for_cft()
         self.olm.freeze_for_cft()
+
+    def freeze_for_ehlg_tuning(self):
+        self.ehlg.freeze_for_ehlg_tuning()
+        self.olm.freeze_for_ehlg_tuning()
 
     def freeze_for_pe_cft(self):
         self.ehlg.freeze_for_pe_cft()
