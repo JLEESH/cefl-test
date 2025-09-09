@@ -19,5 +19,8 @@ class LinearLoRA(nn.Module):
         # out = lora_out + self.linear(x)
         # return out
     
-    def add_w(self, w):
+    def attach_w(self, w):
         self.lora_params = w
+        
+    def remove_w(self):
+        self.lora_params = None

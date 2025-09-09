@@ -24,7 +24,7 @@ def test_gollem_train_to_zero(nSteps=1000, model=None, verbose=False):
 
     #optim = torch.optim.SGD(model.parameters(), lr=1e-2)#, momentum=0.9)
     optim = torch.optim.SGD(model.parameters(), lr=1e-2, momentum=0.1)
-    #optim = torch.optim.AdamW(model.parameters(), lr=1e-4)
+    #optim = torch.optim.AdamW(model.parameters(), lr=1e-2)
 
     for i in range(nSteps):
         out = model(#input_ids=input_ids,
@@ -57,25 +57,51 @@ def test_gollem_train_to_zero(nSteps=1000, model=None, verbose=False):
             print(f"Step {i+1:5d} of {nSteps:5d} complete...")
     return model
 
-def check_gollem_training_mock(model, n=3):
-    out = model(prompt=default_prompt, layer_indices=lia, weight_types=wta)
+def get_gollem_output(model, prompt=default_prompt, adapted=True, do_sample=False, verbose=True):
+    #out = model(prompt=default_prompt, layer_indices=lia, weight_types=wta)
     #dec = model.olm.tokenizer.decode(out['sequences'][0])
     #dec = model.olm.tokenizer.decode(out['logits'][0])
     #print(dec)
-    print(out)
+    out = model.generate(
+        prompt=prompt,
+        layer_indices=lia,
+        weight_types=wta,
+        adapted=adapted,
+        do_sample=do_sample)
+    out = model.olm.tokenizer.decode(out[0])
+    
+    if verbose:
+        print(out)
+    return out
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--prompt", "-p", type=str, default=default_prompt)
+    parser.add_argument("--do-sample", action="store_true")
+    args = parser.parse_args()
+    prompt = args.prompt
+    do_sample = args.do_sample
+    
+    
     #model = ehlg.EHLG(ehlg.EHLG.default_config)
     model = gollem.Gollem(gollem.Gollem.default_config)
 
-    print("checking model...")
-    check_gollem_training_mock(model)
+    print("\nchecking model...")
+    get_gollem_output(model, prompt=prompt, do_sample=do_sample)
+    
+    print("\nchecking model (unadapted output)...")
+    get_gollem_output(model, prompt=prompt, adapted=False, do_sample=do_sample)
 
-    print("mock training model (to output zeros)...")
-    model = test_gollem_train_to_zero(nSteps=100, model=model, verbose=True)
+    print("\nmock training model (i.e. learn to output zeros as logits)...")
+    #model = test_gollem_train_to_zero(nSteps=100, model=model, verbose=True)
+    model = test_gollem_train_to_zero(nSteps=10, model=model, verbose=True)
 
-    print("checking mock trained model...")
-    check_gollem_training_mock(model)
+    print("\nchecking mock trained model...")
+    get_gollem_output(model, prompt=prompt, do_sample=do_sample)
+    
+    print("\nchecking mock trained model (unadapted output)...")
+    get_gollem_output(model, prompt=prompt, adapted=False, do_sample=do_sample)
 
 if __name__ == "__main__":
     main()

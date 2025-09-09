@@ -73,6 +73,59 @@ class EHLGOLM(nn.Module):
         #out = out_olm['logits']
         return out_olm
 
+    def generate(self,
+        prompt=None,
+        input_ids=None,
+        layer_indices=None,
+        weight_types=None,
+        adapted=True,
+        max_new_tokens=12,
+        output_scores=False,
+        return_dict_in_generate=False,
+        do_sample=False,
+        **kwargs):
+
+        # by default, the input to Gollem should be:
+        # 1. list of indices and types for HN (can have default values)
+        # 2. input for llm (data)
+
+        if prompt is not None and input_ids is not None:
+            raise ValueError("``EHLGOLM.generate()``: Please only provide one of ``prompt`` or ``input_ids``, but not both")
+        elif prompt is None and input_ids is None:
+            raise ValueError("``EHLGOLM.generate()``: Provide ``prompt`` or ``input_ids``.")
+
+        # train all indices by default
+        if layer_indices is None:
+            layer_indices = [n for n in range(self.nlayers_olm)]
+        if weight_types is None:
+            weight_types = [[i for i in range(self.ntypes)] for _ in range(len(layer_indices))]
+        if len(layer_indices) != len(weight_types):
+            raise ValueError(
+                "``EHLGOLM.generate()``: the lengths of ``layer_indices`` and ``weight_types`` do not match."
+            )
+
+        # obtain LoRA matrix weights and reshape
+        ehlg_output = self.ehlg(layer_indices, weight_types, data_emb=None)
+        ehlg_output_ab_dict = self.ehlg.reshape_output(ehlg_output, layer_indices, weight_types)
+
+        # add LoRA matrix outputs to OLM
+        if adapted is True:
+            self.olm_add_lora(lora_dict=ehlg_output_ab_dict)
+        else:
+            self.olm_remove_lora()
+
+        # pass prompt to OLM
+        if prompt is not None:
+            enc_olm = self.olm.tokenizer(prompt, return_tensors="pt")
+            input_ids = enc_olm.input_ids
+        out_olm = self.olm.model.generate(
+            input_ids=input_ids,
+            max_new_tokens=max_new_tokens,
+            output_scores=output_scores,
+            return_dict_in_generate=return_dict_in_generate,
+            do_sample=do_sample)
+        return out_olm
+
     def adapt_olm(self):
         for li in range(self.ehlg.nlayers):
             for wt_i in range(self.ehlg.ntypes):
@@ -89,20 +142,31 @@ class EHLGOLM(nn.Module):
                 else:
                     raise NotImplementedError
         return self.olm
-    
+
     def olm_add_lora(self, lora_dict):
         for li, wt in lora_dict.items():
             for wt_i in wt:
                 if wt_i == 0:
-                    self.olm.model.model.layers[li].self_attn.k_proj.add_w(lora_dict[li][wt_i]['A'] @ lora_dict[li][wt_i]['B'])
+                    self.olm.model.model.layers[li].self_attn.k_proj.attach_w(lora_dict[li][wt_i]['A'] @ lora_dict[li][wt_i]['B'])
                     #org = self.olm.model.model.layers[li].self_attn.k_proj
                     #w = torch.nn.Parameter(lora_dict[li][wt_i]['A'] @ lora_dict[li][wt_i]['B'], requires_grad=True)
                     #self.olm.model.model.layers[li].self_attn.k_proj = LinearLoRA(org, w)
                 elif wt_i == 1:
-                    self.olm.model.model.layers[li].self_attn.v_proj.add_w(lora_dict[li][wt_i]['A'] @ lora_dict[li][wt_i]['B'])
+                    self.olm.model.model.layers[li].self_attn.v_proj.attach_w(lora_dict[li][wt_i]['A'] @ lora_dict[li][wt_i]['B'])
                     #org = self.olm.model.model.layers[li].self_attn.v_proj
                     #w = torch.nn.Parameter(lora_dict[li][wt_i]['A'] @ lora_dict[li][wt_i]['B'], requires_grad=True)
                     #self.olm.model.model.layers[li].self_attn.v_proj = LinearLoRA(org, w)
+                else:
+                    raise NotImplementedError
+        return self.olm
+    
+    def olm_remove_lora(self):
+        for li in range(self.ehlg.nlayers):
+            for wt_i in range(self.ehlg.ntypes):
+                if wt_i == 0:
+                    self.olm.model.model.layers[li].self_attn.k_proj.remove_w()
+                elif wt_i == 1:
+                    self.olm.model.model.layers[li].self_attn.v_proj.remove_w()
                 else:
                     raise NotImplementedError
         return self.olm
